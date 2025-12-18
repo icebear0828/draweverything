@@ -1,0 +1,5 @@
+{
+  "name": "Fourier Architect",
+  "description": "Visualize the power of the Fast Fourier Transform (FFT) by drawing any shape, character, or function using rotating epicycles. Features AI-powered generation and image-to-trajectory conversion.",
+  "requestFramePermissions": []
+}

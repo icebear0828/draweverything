@@ -1,0 +1,157 @@
+import { Complex, FourierCoefficient, Point } from '../types';
+
+// High-quality resampling to ensure uniform distribution of points along the path
+export const resamplePath = (points: Point[], targetCount: number): Complex[] => {
+    if (points.length === 0) return [];
+    
+    // Calculate total length
+    let totalLen = 0;
+    const dists = [0];
+    for (let i = 1; i < points.length; i++) {
+        const dx = points[i].x - points[i-1].x;
+        const dy = points[i].y - points[i-1].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        totalLen += d;
+        dists.push(totalLen);
+    }
+
+    // Close the loop distance
+    const dx = points[0].x - points[points.length-1].x;
+    const dy = points[0].y - points[points.length-1].y;
+    totalLen += Math.sqrt(dx*dx + dy*dy);
+    dists.push(totalLen); 
+    
+    const extendedPoints = [...points, points[0]];
+
+    const resampled: Complex[] = [];
+    const step = totalLen / targetCount;
+    
+    let idx = 0;
+
+    for (let i = 0; i < targetCount; i++) {
+        const targetDist = i * step;
+        
+        while (idx < dists.length - 1 && dists[idx + 1] < targetDist) {
+            idx++;
+        }
+        
+        if (idx >= extendedPoints.length - 1) break;
+
+        const p1 = extendedPoints[idx];
+        const p2 = extendedPoints[idx+1];
+        const distStart = dists[idx];
+        const distEnd = dists[idx+1];
+        const segmentLen = distEnd - distStart;
+        
+        let t = 0;
+        if (segmentLen > 0.0001) {
+            t = (targetDist - distStart) / segmentLen;
+        }
+
+        resampled.push({
+            re: p1.x + (p2.x - p1.x) * t,
+            im: p1.y + (p2.y - p1.y) * t
+        });
+    }
+
+    return resampled;
+};
+
+/**
+ * Calculates the Discrete Fourier Transform (DFT).
+ */
+export const dft = (x: Complex[]): FourierCoefficient[] => {
+  const X: FourierCoefficient[] = [];
+  const N = x.length;
+
+  for (let k = 0; k < N; k++) {
+    let re = 0;
+    let im = 0;
+
+    // Optimization: Precalculate angle part
+    const angleConst = (2 * Math.PI * k) / N;
+
+    for (let n = 0; n < N; n++) {
+      const phi = angleConst * n;
+      const cos = Math.cos(phi);
+      const sin = Math.sin(phi);
+      
+      re += x[n].re * cos + x[n].im * sin;
+      im += x[n].im * cos - x[n].re * sin;
+    }
+
+    re = re / N;
+    im = im / N;
+
+    const freq = k > N / 2 ? k - N : k;
+    const amp = Math.sqrt(re * re + im * im);
+    const phase = Math.atan2(im, re);
+
+    X.push({ re, im, freq, amp, phase });
+  }
+
+  return X.sort((a, b) => b.amp - a.amp);
+};
+
+// --- DYNAMIC FUNCTION GENERATION ---
+
+export const generateFromFunction = (
+    xFnStr: string, 
+    yFnStr: string, 
+    tMin: number, 
+    tMax: number, 
+    points: number,
+    scale: number,
+    shouldCenter: boolean = false
+): Complex[] => {
+    const path: Complex[] = [];
+    
+    // Create functions from strings safely
+    // We bind 't' as argument
+    let xFn: Function, yFn: Function;
+    
+    try {
+        // eslint-disable-next-line no-new-func
+        xFn = new Function('t', `return ${xFnStr};`);
+        // eslint-disable-next-line no-new-func
+        yFn = new Function('t', `return ${yFnStr};`);
+    } catch (e) {
+        console.error("Invalid function string", e);
+        return [];
+    }
+
+    for (let i = 0; i < points; i++) {
+        const t = tMin + (tMax - tMin) * (i / points);
+        try {
+            const x = xFn(t);
+            const y = yFn(t);
+            if (isNaN(x) || isNaN(y)) continue;
+            
+            // Standardize coordinate system: Y is usually up in math, but down in Canvas.
+            // We flip Y here to make "up" up.
+            path.push({ re: x * scale, im: -y * scale }); 
+        } catch (e) {
+            continue;
+        }
+    }
+    
+    if (path.length === 0) return [];
+
+    // Auto-centering logic for manual functions
+    if (shouldCenter) {
+        const sum = path.reduce((acc, p) => ({ re: acc.re + p.re, im: acc.im + p.im }), { re: 0, im: 0 });
+        const center = { re: sum.re / path.length, im: sum.im / path.length };
+        
+        for (let i = 0; i < path.length; i++) {
+            path[i].re -= center.re;
+            path[i].im -= center.im;
+        }
+    }
+    
+    // We rely on the large point count for smoothness, 
+    // no resampling needed for pure math functions unless they are non-uniform speed.
+    // However, resampling helps distributing FFT weights better if the curve speed varies wildly.
+    // Let's resample to be safe for uniform time steps in FFT.
+    const pointObj = path.map(p => ({x: p.re, y: p.im}));
+    return resamplePath(pointObj, points);
+};
