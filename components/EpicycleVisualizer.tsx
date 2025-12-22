@@ -1,35 +1,29 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Complex, FourierCoefficient, MathLayer } from '../types';
-import { dft } from '../utils/math';
+import { ProcessedLayer } from '../types';
 
-interface LayerData {
-  coefficients: FourierCoefficient[];
-  color: string;
-  fillColor?: string;
-  opacity: number;
-  lineWidth: number;
+interface LayerRenderState {
   pathHistory: {x: number, y: number}[];
-  modFn: (t: number) => number;
 }
 
 interface EpicycleVisualizerProps {
-  pathData: Complex[][]; 
-  layerConfigs?: Partial<MathLayer>[]; 
+  layers: ProcessedLayer[]; 
   isRunning: boolean;
   speedMultiplier: number;
 }
 
 const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({ 
-  pathData, 
-  layerConfigs,
+  layers,
   isRunning, 
   speedMultiplier 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef = useRef(0);
   const animationFrameRef = useRef<number>(0);
-  const [layers, setLayers] = useState<LayerData[]>([]);
+  
+  // Local state for visual history (trail) only. 
+  // We use a Ref for history to prevent React Re-renders, but map it by layer index.
+  const historyRef = useRef<LayerRenderState[]>([]);
 
   // Viewport State
   const [zoom, setZoom] = useState(1);
@@ -37,55 +31,18 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
   const isDragging = useRef(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
 
-  // 1. Compute DFT
-  useEffect(() => {
-    if (pathData.length > 0) {
-        const newLayers: LayerData[] = pathData.map((path, index) => {
-            const coeffs = dft(path);
-            const config = layerConfigs?.[index];
-            const defaultColors = ['#22d3ee', '#e879f9', '#fbbf24', '#a78bfa', '#34d399'];
-            
-            // Parse modulation function
-            let modFn = (t: number) => 1;
-            if (config?.ampModFn) {
-                try {
-                    // eslint-disable-next-line no-new-func
-                    modFn = new Function('t', `return ${config.ampModFn};`) as (t: number) => number;
-                } catch (e) {
-                    console.error("Invalid modulation function", e);
-                }
-            }
-            
-            return {
-                coefficients: coeffs,
-                color: config?.colorHex || defaultColors[index % defaultColors.length],
-                fillColor: config?.fillColor,
-                opacity: config?.opacity ?? 1.0,
-                lineWidth: config?.lineWidth ?? 2.5,
-                pathHistory: [],
-                modFn
-            };
-        });
-        setLayers(newLayers);
-    } else {
-        setLayers([]);
-    }
-  }, [pathData, layerConfigs]);
-
-  // 2. Reset Logic
+  // Reset history when layers change significantly (count or coefficients)
   useEffect(() => {
      timeRef.current = 0;
-     setLayers(prev => prev.map(l => ({ ...l, pathHistory: [] })));
-  }, [pathData, speedMultiplier]); 
+     historyRef.current = layers.map(() => ({ pathHistory: [] }));
+  }, [layers.length, layers[0]?.coefficients.length]); 
 
   // --- Interaction Handlers ---
   const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const zoomSensitivity = 0.001;
-      // Negative deltaY means scrolling up (zooming in)
       const delta = -e.deltaY * zoomSensitivity;
-      // Clamp zoom to reasonable levels
-      const newZoom = Math.min(Math.max(zoom + delta * zoom * 5, 0.1), 20);
+      const newZoom = Math.min(Math.max(zoom + delta * zoom * 5, 0.1), 50);
       setZoom(newZoom);
   };
 
@@ -106,27 +63,26 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
       isDragging.current = false;
   };
 
-  // Attach non-passive wheel listener for preventing default scroll
   useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvas.addEventListener('wheel', handleWheel, { passive: false });
       return () => canvas.removeEventListener('wheel', handleWheel);
-  }, [zoom]); // Re-bind if zoom changes (though logic uses state setter, good practice)
+  }, [zoom]); 
 
   const drawArrow = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, opacity: number) => {
-      const headLength = 5 / zoom; // Scale arrow head with zoom so it doesn't get huge
+      const headLength = 6 / zoom; 
       const dx = x2 - x1;
       const dy = y2 - y1;
       const angle = Math.atan2(dy, dx);
       const length = Math.sqrt(dx*dx + dy*dy);
 
-      if (length * zoom < 2) return; // Optimize small arrows
+      if (length * zoom < 3) return; 
 
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
-      ctx.lineWidth = 1.5 / zoom; // Scale line width
-      ctx.globalAlpha = opacity;
+      ctx.lineWidth = 1.5 / zoom; 
+      ctx.globalAlpha = opacity * 0.6; 
 
       // Shaft
       ctx.beginPath();
@@ -147,25 +103,20 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
 
   const drawBackground = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
       ctx.clearRect(0,0,w,h);
-      ctx.fillStyle = '#050505'; 
-      ctx.fillRect(0, 0, w, h);
-
+      
       const cx = w / 2;
       const cy = h / 2;
-      
-      // Calculate effective origin on screen
       const originX = cx + pan.x;
       const originY = cy + pan.y;
 
       // Dynamic Grid
-      ctx.strokeStyle = '#27272a'; // Zinc-800
-      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; 
+      ctx.lineWidth = 1;
       ctx.beginPath();
       
-      const baseStep = 50;
+      const baseStep = 100;
       const step = baseStep * zoom;
       
-      // Calculate grid range visible on screen
       const startCol = Math.floor(-originX / step);
       const endCol = Math.floor((w - originX) / step) + 1;
       
@@ -183,18 +134,14 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
       }
       ctx.stroke();
 
-      // Main Axes
-      ctx.strokeStyle = '#52525b'; // Zinc-600
+      // Axes
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)'; 
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      
-      // Y-Axis (Draw if visible)
-      if (originX >= -1 && originX <= w + 1) {
+      if (originX >= -100 && originX <= w + 100) {
         ctx.moveTo(originX, 0); ctx.lineTo(originX, h);
       }
-      
-      // X-Axis (Draw if visible)
-      if (originY >= -1 && originY <= h + 1) {
+      if (originY >= -100 && originY <= h + 100) {
         ctx.moveTo(0, originY); ctx.lineTo(w, originY);
       }
       ctx.stroke();
@@ -215,34 +162,34 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
       const cx = w / 2;
       const cy = h / 2;
 
-      // Reset transform for background drawing
       ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
       drawBackground(ctx, w, h);
 
       if (layers.length === 0) return;
 
-      // Apply Pan & Zoom Transform
-      // We translate to center + pan, then scale
       ctx.translate(cx + pan.x, cy + pan.y);
       ctx.scale(zoom, zoom);
 
-      layers.forEach((layer) => {
+      layers.forEach((layer, idx) => {
           if (layer.coefficients.length === 0) return;
+          
+          // Ensure history object exists
+          if (!historyRef.current[idx]) {
+              historyRef.current[idx] = { pathHistory: [] };
+          }
+          const layerState = historyRef.current[idx];
 
-          // Start from (0,0) in our transformed world space
           let x = 0;
           let y = 0;
           
           const sortedCoeffs = layer.coefficients; 
           
-          // Calculate modulation value for this frame
           let modValue = 1;
           try {
              modValue = layer.modFn(timeRef.current);
              if (isNaN(modValue)) modValue = 1;
           } catch { modValue = 1; }
 
-          // Identify primary epicycle (largest non-DC)
           let primaryIndex = -1;
           for (let i = 0; i < sortedCoeffs.length; i++) {
               if (sortedCoeffs[i].freq !== 0) {
@@ -256,14 +203,11 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
             const prevY = y;
             const { freq, amp, phase } = sortedCoeffs[i];
             
-            // Apply modulation to primary epicycle only
             let currentAmp = amp;
             if (i === primaryIndex) {
                 currentAmp = amp * modValue;
             }
 
-            // Limit rendered circles for performance
-            // We consider the modulated amplitude for visibility check
             const isSignificant = i < 60 && (currentAmp * zoom) > 0.5;
 
             const val = freq * timeRef.current + phase;
@@ -272,8 +216,8 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
 
             if (isSignificant) {
                  // Circle
-                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-                 ctx.lineWidth = 1 / zoom; // Keep thin regardless of zoom
+                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                 ctx.lineWidth = 1 / zoom; 
                  ctx.beginPath();
                  ctx.arc(prevX, prevY, Math.abs(currentAmp), 0, 2 * Math.PI);
                  ctx.stroke();
@@ -283,42 +227,38 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
             }
           }
 
-          // History is stored in RELATIVE coordinates now
-          layer.pathHistory.unshift({ x, y });
-          const maxPoints = 2500; 
-          if (layer.pathHistory.length > maxPoints) {
-              layer.pathHistory.pop();
+          layerState.pathHistory.unshift({ x, y });
+          const maxPoints = 3000; 
+          if (layerState.pathHistory.length > maxPoints) {
+              layerState.pathHistory.pop();
           }
 
           // Draw Path
-          if (layer.pathHistory.length > 2) {
-            
-            // Fill
+          if (layerState.pathHistory.length > 2) {
             if (layer.fillColor) {
                 ctx.fillStyle = layer.fillColor;
                 ctx.globalAlpha = 0.2;
                 ctx.beginPath();
-                ctx.moveTo(layer.pathHistory[0].x, layer.pathHistory[0].y);
-                for (let i = 1; i < layer.pathHistory.length; i+=4) {
-                    ctx.lineTo(layer.pathHistory[i].x, layer.pathHistory[i].y);
+                ctx.moveTo(layerState.pathHistory[0].x, layerState.pathHistory[0].y);
+                for (let i = 1; i < layerState.pathHistory.length; i+=4) {
+                    ctx.lineTo(layerState.pathHistory[i].x, layerState.pathHistory[i].y);
                 }
                 ctx.closePath();
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
             }
 
-            // Stroke
             ctx.shadowBlur = 15;
             ctx.shadowColor = layer.color;
             ctx.strokeStyle = layer.color;
-            ctx.lineWidth = layer.lineWidth / zoom; // consistent width
+            ctx.lineWidth = layer.lineWidth / zoom; 
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
             ctx.beginPath();
-            ctx.moveTo(layer.pathHistory[0].x, layer.pathHistory[0].y);
-            for (let i = 1; i < layer.pathHistory.length; i++) {
-                ctx.lineTo(layer.pathHistory[i].x, layer.pathHistory[i].y);
+            ctx.moveTo(layerState.pathHistory[0].x, layerState.pathHistory[0].y);
+            for (let i = 1; i < layerState.pathHistory.length; i++) {
+                ctx.lineTo(layerState.pathHistory[i].x, layerState.pathHistory[i].y);
             }
             ctx.stroke();
             ctx.shadowBlur = 0;
@@ -329,7 +269,7 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
           ctx.shadowColor = '#ffffff';
           ctx.fillStyle = '#ffffff'; 
           ctx.beginPath();
-          ctx.arc(x, y, 2.5 / zoom, 0, 2 * Math.PI);
+          ctx.arc(x, y, 3 / zoom, 0, 2 * Math.PI);
           ctx.fill();
           ctx.shadowBlur = 0;
       });
@@ -359,16 +299,11 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
             const dpr = window.devicePixelRatio || 1;
             const parent = canvasRef.current.parentElement;
             
-            // The canvas should be 100% of the PARENT container
-            const rect = parent.getBoundingClientRect();
+            canvasRef.current.width = parent.clientWidth * dpr;
+            canvasRef.current.height = parent.clientHeight * dpr;
             
-            canvasRef.current.width = rect.width * dpr;
-            canvasRef.current.height = rect.height * dpr;
-            
-            // We set context scale in the render loop now
-            
-            canvasRef.current.style.width = `${rect.width}px`;
-            canvasRef.current.style.height = `${rect.height}px`;
+            canvasRef.current.style.width = `${parent.clientWidth}px`;
+            canvasRef.current.style.height = `${parent.clientHeight}px`;
         }
     };
     window.addEventListener('resize', handleResize);
@@ -377,7 +312,7 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
   }, []);
 
   return (
-    <div className="w-full h-full relative overflow-hidden cursor-grab active:cursor-grabbing">
+    <div className="w-full h-full relative overflow-hidden cursor-move active:cursor-grabbing">
       <canvas 
         ref={canvasRef} 
         className="block w-full h-full touch-none"
@@ -387,20 +322,20 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
         onMouseLeave={handleMouseUp}
       />
       
-      {/* Heads Up Display (HUD) - Top Right */}
-      <div className="absolute top-8 right-8 pointer-events-none select-none z-10 flex flex-col gap-3 items-end">
-        <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest border-b border-zinc-800 pb-1 mb-1 text-right">
-             Zoom: {Math.round(zoom * 100)}%
-        </div>
-        <div className="flex flex-col gap-2 items-end">
+      {/* HUD - Bottom Left */}
+      <div className="absolute bottom-6 left-6 pointer-events-none select-none z-0 flex flex-col gap-2 items-start opacity-70">
+        <div className="flex flex-col gap-2 items-start">
             {layers.map((l, idx) => (
-                <div key={idx} className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-full border border-zinc-800/50 backdrop-blur-sm">
+                <div key={idx} className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-sm">
+                    <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" style={{backgroundColor: l.color, boxShadow: `0 0 8px ${l.color}`}}></div>
                     <span className="text-zinc-400 font-mono text-[10px]">
-                        f<sub>{idx+1}</sub> <span className="opacity-30 mx-1">|</span> {l.coefficients.length} terms
+                         {l.coefficients.length} vectors
                     </span>
-                    <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" style={{backgroundColor: l.color, boxShadow: `0 0 8px ${l.color}`}}></div>
                 </div>
             ))}
+        </div>
+        <div className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-1">
+             Zoom: {Math.round(zoom * 100)}%
         </div>
       </div>
       

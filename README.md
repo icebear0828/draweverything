@@ -1,20 +1,20 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🎨 Fourier Architect
 
-# Run and deploy your AI Studio app
+**Fourier Architect** is a high-performance visualizer that demonstrates the beauty of the Discrete Fourier Transform (DFT). It allows users to "draw" anything—from complex mathematical functions to real-world images and AI-generated characters—using a chain of rotating circles called **epicycles**.
 
-This contains everything you need to run your app locally.
+## 🚀 Key Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1E3n7KkYLUXvrakq1QvE2nOp5k5RAFBn9
+- **Multi-Layer Composition**: Build complex art by stacking multiple mathematical layers, each with its own equations and styling.
+- **Dynamic Amplitude Modulation**: Create breathing, pulsing, or organic effects by modulating the radius of epicycles with secondary functions.
+- **Image-to-Trajectory**: Upload any high-contrast image, and the app will automatically trace its contours and convert them into a Fourier path.
+- **Gemini AI Integration**: Describe a shape or character, and the Gemini API generates a traceable silhouette for immediate visualization.
+- **Professional Math Engine**: Custom DFT implementation with high-quality path resampling for smooth, accurate epicycle chains.
+- **Interactive Viewport**: Infinite pan and zoom controls to explore the intricate details of complex Fourier paths.
 
-## Run Locally
+## 🛠️ Tech Stack
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Framework**: React 19 (ESM)
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **AI**: Google Gemini API (`gemini-2.5-flash-image`)
+- **Rendering**: HTML5 Canvas with high-DPI support

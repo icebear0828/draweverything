@@ -1,133 +1,104 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import EpicycleVisualizer from './components/EpicycleVisualizer';
 import ControlPanel from './components/ControlPanel';
-import { AppMode, Complex, MathLayer } from './types';
+import { MathLayer } from './types';
 import { PRESETS } from './constants/presets';
-import { generateFromFunction, resamplePath } from './utils/math';
-import { extractContourFromImage } from './utils/imageProcessing';
-import { generateCharacterImage } from './services/gemini';
-import { PRESET_URIS } from './utils/presetShapes';
+import { usePathGenerator } from './hooks/usePathGenerator';
+import { useFourier } from './hooks/useFourier';
 import { 
   Activity, 
   Loader2,
-  PanelLeftClose,
-  PanelLeftOpen
+  Play,
+  Pause,
+  Settings2,
+  ChevronDown,
+  Sigma,
+  Undo2
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [mode, setMode] = useState<AppMode>(AppMode.FUNCTION);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Data State
-  const [pathsData, setPathsData] = useState<Complex[][]>([]);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
   
-  // Layer Configuration State
-  const [activeLayers, setActiveLayers] = useState<MathLayer[]>([{
-    xFn: PRESETS.ROYAL_MANDALA.layers![0].xFn,
-    yFn: PRESETS.ROYAL_MANDALA.layers![0].yFn,
-    colorHex: '#22d3ee',
-    lineWidth: 2,
-    opacity: 1,
-    ampModFn: '1'
-  }]);
-  
+  // 1. Simulation State
   const [isRunning, setIsRunning] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [prompt, setPrompt] = useState('');
+  const [pointCount] = useState(2048); 
   
+  // 2. Data Generators (Source Adapter)
+  const generator = usePathGenerator();
+  const { 
+    pathsData, 
+    layersConfig, 
+    loading, 
+    error, 
+    resetError, 
+    setLayersConfig 
+  } = generator;
+
+  // 3. Signal Processing (Math Engine)
+  const processedLayers = useFourier(pathsData, layersConfig);
+
+  // 4. Local Config State (for Inputs)
   const [tMin, setTMin] = useState(PRESETS.ROYAL_MANDALA.tMin);
   const [tMax, setTMax] = useState(PRESETS.ROYAL_MANDALA.tMax);
   const [scale, setScale] = useState(PRESETS.ROYAL_MANDALA.scale);
-  const [pointCount, setPointCount] = useState(2048); 
-  
   const [currentPresetKey, setCurrentPresetKey] = useState<string>('ROYAL_MANDALA');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Initial Load
   useEffect(() => {
-      loadPreset('ROYAL_MANDALA');
+    handleLoadPreset('ROYAL_MANDALA');
   }, []);
 
-  const handleManualRender = useCallback(() => {
-    setMode(AppMode.FUNCTION);
-    setLoading(true);
-    setIsRunning(false);
-    setErrorMsg(null);
-    setCurrentPresetKey('CUSTOM');
-
-    setTimeout(() => {
-        try {
-            const newPaths: Complex[][] = activeLayers.map(layer => {
-                const s = layer.scaleMod ? scale * layer.scaleMod : scale;
-                const data = generateFromFunction(layer.xFn, layer.yFn, tMin, tMax, pointCount, s, true);
-                if (data.length === 0) throw new Error("A layer produced an empty path.");
-                return data;
-            });
-            setPathsData(newPaths);
-            setIsRunning(true);
-        } catch (err) {
-            setErrorMsg("Math Error: Check your function syntax in layers.");
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }, 50);
-  }, [activeLayers, tMin, tMax, pointCount, scale]);
-
-  const loadPreset = (key: string) => {
-      const p = PRESETS[key];
-      setCurrentPresetKey(key);
-      setTMin(p.tMin);
-      setTMax(p.tMax);
-      setScale(p.scale);
-      
-      setLoading(true);
+  // --- Handlers ---
+  
+  const handleLoadPreset = async (key: string) => {
       setIsRunning(false);
-      
-      setTimeout(() => {
-          try {
-              const newPaths: Complex[][] = [];
-              const newLayers: MathLayer[] = [];
-
-              if (p.layers) {
-                  p.layers.forEach(layer => {
-                      const s = layer.scaleMod ? p.scale * layer.scaleMod : p.scale;
-                      const data = generateFromFunction(layer.xFn, layer.yFn, p.tMin, p.tMax, 2048, s, false);
-                      if (data.length > 0) {
-                          newPaths.push(data);
-                          newLayers.push({ ...layer, ampModFn: layer.ampModFn || '1' });
-                      }
-                  });
-              } else if (p.xFn && p.yFn) {
-                  const data = generateFromFunction(p.xFn, p.yFn, p.tMin, p.tMax, 2048, p.scale, false);
-                  newPaths.push(data);
-                  newLayers.push({ 
-                      xFn: p.xFn, 
-                      yFn: p.yFn, 
-                      colorHex: '#22d3ee', 
-                      opacity: 1, 
-                      lineWidth: 2,
-                      ampModFn: '1'
-                  });
-              }
-              
-              setPathsData(newPaths);
-              setActiveLayers(newLayers);
-              setIsRunning(true);
-              setMode(AppMode.FUNCTION);
-          } catch(e) {
-              console.error(e);
-              setErrorMsg("Error generating preset.");
-          } finally {
-              setLoading(false);
-          }
-      }, 100);
+      setIsPresetMenuOpen(false);
+      setCurrentPresetKey(key);
+      const preset = await generator.loadPreset(key);
+      if (preset) {
+          setTMin(preset.tMin);
+          setTMax(preset.tMax);
+          setScale(preset.scale);
+          setIsRunning(true);
+      }
   };
 
+  const handleManualCompile = () => {
+      setIsRunning(false);
+      setCurrentPresetKey('CUSTOM');
+      generator.compileFunctions(layersConfig, tMin, tMax, scale, pointCount);
+      setIsRunning(true);
+  };
+  
+  const handleImageProcess = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files?.[0]) return;
+      setIsRunning(false);
+      setCurrentPresetKey('IMAGE');
+      await generator.processImage(e.target.files[0], pointCount);
+      setIsRunning(true);
+  };
+  
+  const handleAIProcess = async (prompt: string) => {
+      setIsRunning(false);
+      setCurrentPresetKey('AI');
+      await generator.processAI(prompt, pointCount);
+      setIsRunning(true);
+  };
+
+  const handleSampleProcess = async (key: any) => {
+      setIsRunning(false);
+      setCurrentPresetKey(`SAMPLE_${key}`);
+      await generator.processSample(key, pointCount);
+      setIsRunning(true);
+  };
+
+  // --- Layer Management ---
+
   const addLayer = () => {
-    setActiveLayers([...activeLayers, {
+    setLayersConfig([...layersConfig, {
         xFn: '5 * Math.cos(t)',
         yFn: '5 * Math.sin(t)',
         colorHex: '#f43f5e',
@@ -138,197 +109,154 @@ const App: React.FC = () => {
   };
 
   const removeLayer = (index: number) => {
-    if (activeLayers.length <= 1) return;
-    const nextLayers = activeLayers.filter((_, i) => i !== index);
-    setActiveLayers(nextLayers);
+    if (layersConfig.length <= 1) return;
+    const nextLayers = layersConfig.filter((_, i) => i !== index);
+    setLayersConfig(nextLayers);
   };
 
   const updateLayer = (index: number, updates: Partial<MathLayer>) => {
-    const nextLayers = [...activeLayers];
+    const nextLayers = [...layersConfig];
     nextLayers[index] = { ...nextLayers[index], ...updates };
-    setActiveLayers(nextLayers);
-  };
-
-  const handlePracticeSample = async (key: keyof typeof PRESET_URIS) => {
-      const uri = PRESET_URIS[key];
-      setMode(AppMode.IMAGE_UPLOAD);
-      setLoading(true);
-      setErrorMsg(null);
-      setIsRunning(false);
-      setCurrentPresetKey(`PRACTICE_${key}`);
-      
-      try {
-        const points = await extractContourFromImage(uri);
-        if (points.length < 20) throw new Error("Could not detect a clear path.");
-        const complexData = resamplePath(points, pointCount); 
-        setPathsData([complexData]);
-        setActiveLayers([{ 
-            xFn: 'IMAGE_TRACE', 
-            yFn: 'IMAGE_TRACE', 
-            colorHex: '#fbbf24', 
-            opacity: 1, 
-            lineWidth: 3, 
-            fillColor: '#fbbf2420', 
-            ampModFn: "1" 
-        }]); 
-        setIsRunning(true);
-      } catch (err) {
-         setErrorMsg("Failed to load sample.");
-      } finally {
-        setLoading(false);
-      }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setMode(AppMode.IMAGE_UPLOAD);
-      setLoading(true);
-      setErrorMsg(null);
-      setIsRunning(false);
-      setCurrentPresetKey('IMAGE');
-      try {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          if (event.target?.result) {
-             try {
-                const points = await extractContourFromImage(event.target.result as string);
-                if (points.length < 20) throw new Error("Could not detect a clear path.");
-                const complexData = resamplePath(points, pointCount); 
-                setPathsData([complexData]);
-                setActiveLayers([{ 
-                    xFn: 'IMAGE_TRACE', 
-                    yFn: 'IMAGE_TRACE', 
-                    colorHex: '#d946ef', 
-                    opacity: 1, 
-                    lineWidth: 2, 
-                    ampModFn: "1" 
-                }]); 
-                setIsRunning(true);
-             } catch (err) {
-                 setErrorMsg("Failed to trace contours. Try a high-contrast image.");
-             }
-             setLoading(false);
-          }
-        };
-        reader.readAsDataURL(file);
-      } catch (err) {
-        setErrorMsg("Error reading file.");
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
-    setMode(AppMode.AI_GENERATE);
-    setLoading(true);
-    setErrorMsg(null);
-    setIsRunning(false);
-    setCurrentPresetKey('AI');
-    try {
-      const b64Image = await generateCharacterImage(prompt);
-      const points = await extractContourFromImage(b64Image);
-      if (points.length < 20) {
-          throw new Error("Generated image was too complex to trace.");
-      }
-      const complexData = resamplePath(points, pointCount);
-      setPathsData([complexData]);
-      setActiveLayers([{ 
-          xFn: 'AI_GEN', 
-          yFn: 'AI_GEN', 
-          colorHex: '#facc15', 
-          opacity: 1, 
-          lineWidth: 2, 
-          ampModFn: "1" 
-      }]); 
-      setIsRunning(true);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Generation failed.");
-    } finally {
-      setLoading(false);
-    }
+    setLayersConfig(nextLayers);
   };
 
   return (
     <div className="relative h-screen w-full bg-[#050505] text-zinc-100 font-sans selection:bg-cyan-500/30 overflow-hidden">
       
-      {/* 1. VISUALIZER LAYER (BACKGROUND) */}
-      <div className={`absolute inset-0 z-0 transition-all duration-500 ease-out ${isSidebarOpen ? 'pl-[200px]' : 'pl-0'}`}>
+      {/* 1. VISUALIZER LAYER (DUMB RENDERER) */}
+      <div className="absolute inset-0 z-0">
           <EpicycleVisualizer 
-              pathData={pathsData} 
-              layerConfigs={activeLayers}
+              layers={processedLayers}
               isRunning={isRunning} 
               speedMultiplier={speed} 
           />
       </div>
 
-      {/* 2. UI LAYER (FOREGROUND) */}
-      
-      {/* Floating Sidebar Container */}
-      <div 
-        className={`absolute top-4 left-4 bottom-4 z-20 w-[420px] flex flex-col transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}`}
-      >
-        <div className="flex-1 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-zinc-800/50 bg-black/60 backdrop-blur-xl">
-           <ControlPanel 
-            layers={activeLayers}
-            updateLayer={updateLayer}
-            addLayer={addLayer}
-            removeLayer={removeLayer}
-            tMin={tMin} setTMin={setTMin}
-            tMax={tMax} setTMax={setTMax}
-            scale={scale} setScale={setScale}
-            speed={speed} setSpeed={setSpeed}
-            isRunning={isRunning} setIsRunning={setIsRunning}
-            prompt={prompt} setPrompt={setPrompt}
-            loading={loading}
-            currentPresetKey={currentPresetKey}
-            loadPreset={loadPreset}
-            handleManualRender={handleManualRender}
-            handlePracticeSample={handlePracticeSample}
-            handleFileUpload={handleFileUpload}
-            handleGenerate={handleGenerate}
-          />
-        </div>
+      {/* 2. UI: Top Bar */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex justify-between items-start p-6 pointer-events-none">
+          <div className="pointer-events-auto bg-black/40 backdrop-blur-md border border-white/10 rounded-full pl-3 pr-5 py-2 flex items-center gap-3 shadow-xl">
+             <div className="bg-gradient-to-br from-cyan-500 to-blue-600 w-8 h-8 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Sigma className="w-5 h-5 text-white" />
+             </div>
+             <div>
+                <h1 className="text-sm font-bold tracking-tight text-white leading-none">Fourier<span className="font-light text-zinc-400">Architect</span></h1>
+                <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">FFT Engine v4.0</p>
+             </div>
+          </div>
+
+          <div className="pointer-events-auto relative">
+              <button 
+                  onClick={() => setIsPresetMenuOpen(!isPresetMenuOpen)}
+                  className="bg-black/60 backdrop-blur-xl border border-white/10 hover:border-white/20 hover:bg-black/80 rounded-full px-4 py-2.5 flex items-center gap-3 transition-all shadow-xl group"
+              >
+                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold group-hover:text-zinc-400">Preset</span>
+                  <div className="w-px h-3 bg-zinc-800"></div>
+                  <span className="text-xs font-medium text-cyan-50 truncate max-w-[150px]">
+                      {PRESETS[currentPresetKey]?.label.replace(/.*:/, '').trim() || 'Custom'}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-300 ${isPresetMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isPresetMenuOpen && (
+                  <div className="absolute right-0 top-full mt-3 w-64 bg-[#09090b]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-2 space-y-1">
+                          {Object.entries(PRESETS).map(([key, val]) => (
+                             <button
+                                key={key}
+                                onClick={() => handleLoadPreset(key)}
+                                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center justify-between group ${currentPresetKey === key ? 'bg-cyan-950/30 text-cyan-200' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}`}
+                             >
+                                <span>{val.label.replace(/.*:/, '').trim()}</span>
+                                {val.layers && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-zinc-600 font-mono group-hover:text-zinc-400">{val.layers.length}L</span>}
+                             </button>
+                          ))}
+                      </div>
+                  </div>
+              )}
+          </div>
       </div>
 
-      {/* Sidebar Toggle Button */}
-      <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute top-6 z-30 p-2 rounded-full bg-black/50 hover:bg-zinc-800/80 text-zinc-400 hover:text-white backdrop-blur-md border border-zinc-800 transition-all shadow-lg"
-          style={{ left: isSidebarOpen ? '450px' : '24px' }}
-      >
-          {isSidebarOpen ? <PanelLeftClose className="w-5 h-5"/> : <PanelLeftOpen className="w-5 h-5"/>}
-      </button>
+      {/* 3. UI: Bottom Bar */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+          <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center gap-4 shadow-2xl ring-1 ring-white/5 pl-6 pr-6 h-14">
+              <button 
+                  onClick={() => setIsRunning(!isRunning)}
+                  className="w-10 h-10 rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                  {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+              </button>
 
-      {/* Global Status Overlay */}
-      {errorMsg && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-red-950/80 border border-red-500/30 text-red-200 px-6 py-2 rounded-full text-xs backdrop-blur-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+              <div className="w-px h-6 bg-white/10"></div>
+
+              <div className="flex flex-col gap-1 w-32">
+                  <div className="flex justify-between items-center text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
+                      <span>Speed</span>
+                      <span className="text-cyan-400">{speed.toFixed(1)}x</span>
+                  </div>
+                  <input 
+                      type="range" 
+                      min="0.1" 
+                      max="4" 
+                      step="0.1" 
+                      value={speed}
+                      onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300"
+                  />
+              </div>
+
+              <div className="w-px h-6 bg-white/10"></div>
+
+              <button 
+                onClick={() => setIsInspectorOpen(!isInspectorOpen)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${isInspectorOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+              >
+                <Settings2 className="w-4 h-4" />
+                <span>Inspector</span>
+              </button>
+          </div>
+      </div>
+
+      {/* 4. UI: Right Inspector */}
+      <div className={`absolute top-0 right-0 bottom-0 w-[380px] z-30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <ControlPanel 
+              layers={layersConfig}
+              tMin={tMin} setTMin={setTMin}
+              tMax={tMax} setTMax={setTMax}
+              scale={scale} setScale={setScale}
+              loading={loading}
+              
+              updateLayer={updateLayer}
+              addLayer={addLayer}
+              removeLayer={removeLayer}
+              
+              onCompileFunctions={handleManualCompile}
+              onProcessImage={handleImageProcess}
+              onProcessAI={handleAIProcess}
+              onProcessSample={handleSampleProcess}
+              
+              onClose={() => setIsInspectorOpen(false)}
+          />
+      </div>
+
+      {/* 5. Overlays */}
+      {error && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-red-950/90 border border-red-500/30 text-red-200 px-6 py-3 rounded-xl text-xs backdrop-blur-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
             <Activity className="w-4 h-4" />
-            {errorMsg}
+            {error}
+            <button onClick={resetError} className="ml-2 hover:text-white"><Undo2 className="w-3 h-3"/></button>
         </div>
       )}
       
       {loading && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-black/80 p-8 rounded-3xl border border-zinc-800 shadow-2xl flex flex-col items-center">
-                <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />
-                <p className="text-zinc-300 text-sm font-medium tracking-wide">Synthesizing Trajectories...</p>
-                <p className="text-zinc-600 text-xs mt-2 font-mono">Calculating FFT Coefficients</p>
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
+            <div className="bg-[#09090b] p-8 rounded-3xl border border-zinc-800 shadow-2xl flex flex-col items-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 animate-pulse"></div>
+                <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4 relative z-10" />
+                <p className="text-zinc-300 text-sm font-medium tracking-wide relative z-10">Processing Signal</p>
+                <p className="text-zinc-600 text-xs mt-2 font-mono relative z-10 uppercase tracking-widest">FFT Calculation in Progress</p>
             </div>
         </div>
       )}
-
-      {/* Bottom Right Info */}
-      <div className="absolute bottom-6 right-8 pointer-events-none z-10 text-right opacity-80">
-            <h3 className="text-zinc-600 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Composition</h3>
-            <p className="text-cyan-400 font-mono text-sm max-w-md truncate drop-shadow-lg">
-            {PRESETS[currentPresetKey]?.label || 'Custom Multi-Layer Composition'}
-            </p>
-            <div className="text-[10px] text-zinc-600 mt-1 font-medium">
-                Fourier Architect v2.1
-            </div>
-      </div>
 
     </div>
   );

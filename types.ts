@@ -23,7 +23,7 @@ export enum AppMode {
   AI_GENERATE = 'AI_GENERATE',
 }
 
-// Defines a single layer of a mathematical composition
+// 1. User Configuration (Input)
 export interface MathLayer {
   xFn: string;
   yFn: string;
@@ -31,17 +31,26 @@ export interface MathLayer {
   scaleMod?: number; // Modify global scale for this layer
   opacity?: number;  // 0.0 to 1.0
   lineWidth?: number; // for emphasis
-  fillColor?: string; // New: Hex color for filling the shape (optional)
-  ampModFn?: string; // New: Function string to modulate amplitude over time
+  fillColor?: string; // Hex color for filling
+  ampModFn?: string; // String function to modulate amplitude
+}
+
+// 2. Processed Data (Ready for Renderer)
+export interface ProcessedLayer {
+  id: string; // Unique identifier for React keys
+  coefficients: FourierCoefficient[];
+  color: string;
+  fillColor?: string;
+  opacity: number;
+  lineWidth: number;
+  modFn: (t: number) => number; // Compiled function
 }
 
 // Preset definition
 export interface PresetDef {
   label: string;
-  // Legacy/Single mode support
   xFn?: string;
   yFn?: string;
-  // Multi-layer support
   layers?: MathLayer[]; 
   tMin: number;
   tMax: number;
