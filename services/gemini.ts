@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const AI_MODEL = 'gemini-2.5-flash-image';
@@ -9,13 +10,13 @@ export const generateCharacterImage = async (prompt: string): Promise<string> =>
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Refine prompt to ensure we get a traceable line drawing
+  // We request a solid silhouette because the contour tracer (Moore-Neighbor)
+  // works best on the boundary of a solid shape. 
+  // Line drawings often result in "double lines" (tracing the thickness of the stroke).
   const enhancedPrompt = `
-    Create a single continuous line drawing of ${prompt}.
-    Style: Minimalist, high contrast, black lines on pure white background.
-    Ensure the shape is closed if possible. 
-    No shading, no gradients, no text.
-    The image should be centered.
+    Create a high-contrast solid black silhouette of ${prompt} on a pure white background.
+    Style: Vector art, flat, minimal, no internal details, no shading.
+    The shape should be centered and clearly defined.
     Aspect ratio 1:1.
   `;
 

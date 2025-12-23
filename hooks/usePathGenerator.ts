@@ -1,5 +1,4 @@
-
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Complex, MathLayer, PresetDef } from '../types';
 import { generateFromFunction, resamplePath } from '../utils/math';
 import { extractContourFromImage } from '../utils/imageProcessing';

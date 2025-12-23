@@ -128,7 +128,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: layer.colorHex, boxShadow: `0 0 8px ${layer.colorHex}` }} />
-                      <span className="text-xs font-mono text-zinc-300">Trajectory {idx + 1}</span>
+                      <span className="text-xs font-mono text-zinc-300">
+                        {layer.xFn === 'AI_GEN' ? 'AI Generated' : layer.xFn === 'IMAGE_TRACE' ? 'Image Trace' : `Trajectory ${idx + 1}`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                        <button onClick={(e) => { e.stopPropagation(); removeLayer(idx); }} className="p-1.5 text-zinc-600 hover:text-red-400 transition-colors">
@@ -146,7 +148,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         <textarea 
                           value={layer.xFn}
                           onChange={(e) => updateLayer(idx, { xFn: e.target.value })}
-                          className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-mono text-cyan-100 focus:border-cyan-500/50 focus:outline-none h-14 resize-none leading-relaxed"
+                          disabled={layer.xFn === 'AI_GEN' || layer.xFn === 'IMAGE_TRACE'}
+                          className={`w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-mono text-cyan-100 focus:border-cyan-500/50 focus:outline-none h-14 resize-none leading-relaxed ${layer.xFn === 'AI_GEN' || layer.xFn === 'IMAGE_TRACE' ? 'opacity-50 cursor-not-allowed' : ''}`}
                           spellCheck={false}
                         />
                       </div>
@@ -155,7 +158,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         <textarea 
                           value={layer.yFn}
                           onChange={(e) => updateLayer(idx, { yFn: e.target.value })}
-                          className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-mono text-cyan-100 focus:border-cyan-500/50 focus:outline-none h-14 resize-none leading-relaxed"
+                          disabled={layer.yFn === 'AI_GEN' || layer.yFn === 'IMAGE_TRACE'}
+                          className={`w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-mono text-cyan-100 focus:border-cyan-500/50 focus:outline-none h-14 resize-none leading-relaxed ${layer.yFn === 'AI_GEN' || layer.yFn === 'IMAGE_TRACE' ? 'opacity-50 cursor-not-allowed' : ''}`}
                           spellCheck={false}
                         />
                       </div>
@@ -253,7 +257,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                </button>
                
                <p className="text-[10px] text-zinc-600 leading-relaxed text-center px-2">
-                   Powered by Gemini. 
+                   Powered by Gemini 2.5 Flash. 
                </p>
            </div>
         )}
