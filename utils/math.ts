@@ -107,25 +107,26 @@ export const dft = (x: Complex[]): FourierCoefficient[] => {
 // --- DYNAMIC FUNCTION GENERATION ---
 
 export const generateFromFunction = (
-    xFnStr: string, 
-    yFnStr: string, 
+    fn1Str: string, // x(t) or r(t)
+    fn2Str: string, // y(t) or theta(t)
     tMin: number, 
     tMax: number, 
     points: number,
     scale: number,
-    shouldCenter: boolean = false
+    shouldCenter: boolean = false,
+    isPolar: boolean = false
 ): Complex[] => {
     const path: Complex[] = [];
     
     // Create functions from strings safely
     // We bind 't' as argument
-    let xFn: Function, yFn: Function;
+    let fn1: Function, fn2: Function;
     
     try {
         // eslint-disable-next-line no-new-func
-        xFn = new Function('t', `return ${xFnStr};`);
+        fn1 = new Function('t', `return ${fn1Str};`);
         // eslint-disable-next-line no-new-func
-        yFn = new Function('t', `return ${yFnStr};`);
+        fn2 = new Function('t', `return ${fn2Str};`);
     } catch (e) {
         console.error("Invalid function string", e);
         return [];
@@ -134,9 +135,21 @@ export const generateFromFunction = (
     for (let i = 0; i < points; i++) {
         const t = tMin + (tMax - tMin) * (i / points);
         try {
-            const x = xFn(t);
-            const y = yFn(t);
-            if (isNaN(x) || isNaN(y)) continue;
+            const val1 = fn1(t);
+            const val2 = fn2(t);
+            if (isNaN(val1) || isNaN(val2)) continue;
+            
+            let x, y;
+
+            if (isPolar) {
+                // val1 = r, val2 = theta
+                x = val1 * Math.cos(val2);
+                y = val1 * Math.sin(val2);
+            } else {
+                // val1 = x, val2 = y
+                x = val1;
+                y = val2;
+            }
             
             // Standardize coordinate system: Y is usually up in math, but down in Canvas.
             // We flip Y here to make "up" up.

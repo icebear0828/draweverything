@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Complex, MathLayer, PresetDef } from '../types';
 import { generateFromFunction, resamplePath } from '../utils/math';
@@ -41,7 +42,7 @@ export const usePathGenerator = (): UsePathGeneratorResult => {
             const newPaths: Complex[][] = layers.map(layer => {
                 const s = layer.scaleMod ? scale * layer.scaleMod : scale;
                 // Center only if it's a manual function layer to ensure it stays on screen
-                const data = generateFromFunction(layer.xFn, layer.yFn, tMin, tMax, points, s, true);
+                const data = generateFromFunction(layer.xFn, layer.yFn, tMin, tMax, points, s, true, layer.isPolar);
                 if (data.length === 0) throw new Error("Layer produced empty path. Check syntax.");
                 return data;
             });
@@ -73,7 +74,7 @@ export const usePathGenerator = (): UsePathGeneratorResult => {
                 if (p.layers) {
                     p.layers.forEach(layer => {
                         const s = layer.scaleMod ? p.scale * layer.scaleMod : p.scale;
-                        const data = generateFromFunction(layer.xFn, layer.yFn, p.tMin, p.tMax, 2048, s, false);
+                        const data = generateFromFunction(layer.xFn, layer.yFn, p.tMin, p.tMax, 2048, s, false, layer.isPolar);
                         if (data.length > 0) {
                             newPaths.push(data);
                             newLayers.push({ ...layer, ampModFn: layer.ampModFn || '1' });

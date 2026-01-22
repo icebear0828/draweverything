@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import EpicycleVisualizer from './components/EpicycleVisualizer';
+import GenerativeVisualizer from './components/GenerativeVisualizer';
 import ControlPanel from './components/ControlPanel';
-import { MathLayer } from './types';
+import { MathLayer, PresetDef } from './types';
 import { PRESETS } from './constants/presets';
 import { usePathGenerator } from './hooks/usePathGenerator';
 import { useFourier } from './hooks/useFourier';
@@ -41,14 +42,15 @@ const App: React.FC = () => {
   const processedLayers = useFourier(pathsData, layersConfig);
 
   // 4. Local Config State (for Inputs)
-  const [tMin, setTMin] = useState(PRESETS.ROYAL_MANDALA.tMin);
-  const [tMax, setTMax] = useState(PRESETS.ROYAL_MANDALA.tMax);
-  const [scale, setScale] = useState(PRESETS.ROYAL_MANDALA.scale);
-  const [currentPresetKey, setCurrentPresetKey] = useState<string>('ROYAL_MANDALA');
+  const [tMin, setTMin] = useState(PRESETS.ALIEN_SIGNAL.tMin);
+  const [tMax, setTMax] = useState(PRESETS.ALIEN_SIGNAL.tMax);
+  const [scale, setScale] = useState(PRESETS.ALIEN_SIGNAL.scale);
+  const [currentPresetKey, setCurrentPresetKey] = useState<string>('ALIEN_SIGNAL');
+  const [currentRenderer, setCurrentRenderer] = useState<'FOURIER' | 'PARTICLE'>('PARTICLE');
 
   // Initial Load
   useEffect(() => {
-    handleLoadPreset('ROYAL_MANDALA');
+    handleLoadPreset('ALIEN_SIGNAL');
   }, []);
 
   // --- Handlers ---
@@ -57,11 +59,26 @@ const App: React.FC = () => {
       setIsRunning(false);
       setIsPresetMenuOpen(false);
       setCurrentPresetKey(key);
-      const preset = await generator.loadPreset(key);
-      if (preset) {
+      const preset = PRESETS[key];
+      
+      // Update Renderer Mode
+      setCurrentRenderer(preset.renderer || 'FOURIER');
+
+      // If Particle mode, we don't strictly need path generation, but we load preset for consistent state
+      if (preset.renderer === 'PARTICLE') {
+          // No complex path generation needed for particles, just run the visualizer
           setTMin(preset.tMin);
           setTMax(preset.tMax);
           setScale(preset.scale);
+          setIsRunning(true);
+          return;
+      }
+
+      const loadedPreset = await generator.loadPreset(key);
+      if (loadedPreset) {
+          setTMin(loadedPreset.tMin);
+          setTMax(loadedPreset.tMax);
+          setScale(loadedPreset.scale);
           setIsRunning(true);
       }
   };
@@ -69,6 +86,7 @@ const App: React.FC = () => {
   const handleManualCompile = () => {
       setIsRunning(false);
       setCurrentPresetKey('CUSTOM');
+      setCurrentRenderer('FOURIER'); // Manual is always Fourier for now
       generator.compileFunctions(layersConfig, tMin, tMax, scale, pointCount);
       setIsRunning(true);
   };
@@ -77,6 +95,7 @@ const App: React.FC = () => {
       if (!e.target.files?.[0]) return;
       setIsRunning(false);
       setCurrentPresetKey('IMAGE');
+      setCurrentRenderer('FOURIER');
       await generator.processImage(e.target.files[0], pointCount);
       setIsRunning(true);
   };
@@ -84,6 +103,7 @@ const App: React.FC = () => {
   const handleAIProcess = async (prompt: string) => {
       setIsRunning(false);
       setCurrentPresetKey('AI');
+      setCurrentRenderer('FOURIER');
       await generator.processAI(prompt, pointCount);
       setIsRunning(true);
   };
@@ -91,6 +111,7 @@ const App: React.FC = () => {
   const handleSampleProcess = async (key: any) => {
       setIsRunning(false);
       setCurrentPresetKey(`SAMPLE_${key}`);
+      setCurrentRenderer('FOURIER');
       await generator.processSample(key, pointCount);
       setIsRunning(true);
   };
@@ -123,13 +144,20 @@ const App: React.FC = () => {
   return (
     <div className="relative h-screen w-full bg-[#050505] text-zinc-100 font-sans selection:bg-cyan-500/30 overflow-hidden">
       
-      {/* 1. VISUALIZER LAYER (DUMB RENDERER) */}
+      {/* 1. VISUALIZER LAYER (SWITCHABLE) */}
       <div className="absolute inset-0 z-0">
-          <EpicycleVisualizer 
-              layers={processedLayers}
-              isRunning={isRunning} 
-              speedMultiplier={speed} 
-          />
+          {currentRenderer === 'PARTICLE' ? (
+              <GenerativeVisualizer 
+                  isRunning={isRunning} 
+                  speed={speed} 
+              />
+          ) : (
+              <EpicycleVisualizer 
+                  layers={processedLayers}
+                  isRunning={isRunning} 
+                  speedMultiplier={speed} 
+              />
+          )}
       </div>
 
       {/* 2. UI: Top Bar */}
@@ -140,7 +168,7 @@ const App: React.FC = () => {
              </div>
              <div>
                 <h1 className="text-sm font-bold tracking-tight text-white leading-none">Fourier<span className="font-light text-zinc-400">Architect</span></h1>
-                <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">FFT Engine v4.0</p>
+                <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">傅里叶绘图师 v4.0</p>
              </div>
           </div>
 
@@ -149,10 +177,10 @@ const App: React.FC = () => {
                   onClick={() => setIsPresetMenuOpen(!isPresetMenuOpen)}
                   className="bg-black/60 backdrop-blur-xl border border-white/10 hover:border-white/20 hover:bg-black/80 rounded-full px-4 py-2.5 flex items-center gap-3 transition-all shadow-xl group"
               >
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold group-hover:text-zinc-400">Preset</span>
+                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold group-hover:text-zinc-400">预设 (Preset)</span>
                   <div className="w-px h-3 bg-zinc-800"></div>
                   <span className="text-xs font-medium text-cyan-50 truncate max-w-[150px]">
-                      {PRESETS[currentPresetKey]?.label.replace(/.*:/, '').trim() || 'Custom'}
+                      {PRESETS[currentPresetKey]?.label.replace(/.*:/, '').trim() || '自定义 (Custom)'}
                   </span>
                   <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-300 ${isPresetMenuOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -167,7 +195,7 @@ const App: React.FC = () => {
                                 className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center justify-between group ${currentPresetKey === key ? 'bg-cyan-950/30 text-cyan-200' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}`}
                              >
                                 <span>{val.label.replace(/.*:/, '').trim()}</span>
-                                {val.layers && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-zinc-600 font-mono group-hover:text-zinc-400">{val.layers.length}L</span>}
+                                {val.layers && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-zinc-600 font-mono group-hover:text-zinc-400">{val.layers.length}层</span>}
                              </button>
                           ))}
                       </div>
@@ -190,7 +218,7 @@ const App: React.FC = () => {
 
               <div className="flex flex-col gap-1 w-32">
                   <div className="flex justify-between items-center text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
-                      <span>Speed</span>
+                      <span>速度 (Speed)</span>
                       <span className="text-cyan-400">{speed.toFixed(1)}x</span>
                   </div>
                   <input 
@@ -208,10 +236,11 @@ const App: React.FC = () => {
 
               <button 
                 onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${isInspectorOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                disabled={currentRenderer === 'PARTICLE'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${isInspectorOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'} ${currentRenderer === 'PARTICLE' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Settings2 className="w-4 h-4" />
-                <span>Inspector</span>
+                <span>控制面板</span>
               </button>
           </div>
       </div>
@@ -252,8 +281,8 @@ const App: React.FC = () => {
             <div className="bg-[#09090b] p-8 rounded-3xl border border-zinc-800 shadow-2xl flex flex-col items-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 animate-pulse"></div>
                 <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4 relative z-10" />
-                <p className="text-zinc-300 text-sm font-medium tracking-wide relative z-10">Processing Signal</p>
-                <p className="text-zinc-600 text-xs mt-2 font-mono relative z-10 uppercase tracking-widest">FFT Calculation in Progress</p>
+                <p className="text-zinc-300 text-sm font-medium tracking-wide relative z-10">信号处理中...</p>
+                <p className="text-zinc-600 text-xs mt-2 font-mono relative z-10 uppercase tracking-widest">正在计算 FFT 频谱...</p>
             </div>
         </div>
       )}

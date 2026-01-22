@@ -25,8 +25,9 @@ export enum AppMode {
 
 // 1. User Configuration (Input)
 export interface MathLayer {
-  xFn: string;
-  yFn: string;
+  xFn: string; // Used for x(t) OR r(t)
+  yFn: string; // Used for y(t) OR theta(t)
+  isPolar?: boolean; // Toggle between Cartesian and Polar
   colorHex: string; 
   scaleMod?: number; // Modify global scale for this layer
   opacity?: number;  // 0.0 to 1.0
@@ -55,4 +56,5 @@ export interface PresetDef {
   tMin: number;
   tMax: number;
   scale: number;
+  renderer?: 'FOURIER' | 'PARTICLE'; // New field to switch rendering engines
 }
