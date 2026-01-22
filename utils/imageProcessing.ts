@@ -1,3 +1,4 @@
+
 import { Point } from '../types';
 
 // Simple Moore-Neighbor Tracing algorithm to find the external contour
@@ -7,7 +8,9 @@ export const extractContourFromImage = (
 ): Promise<Point[]> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // Enable CORS to allow processing if imageSrc is external, though usually it is base64 here.
     img.crossOrigin = 'Anonymous';
+    
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -21,13 +24,16 @@ export const extractContourFromImage = (
       const MAX_SIZE = 512;
       let w = img.width;
       let h = img.height;
+      
+      // Maintain aspect ratio
       if (w > MAX_SIZE || h > MAX_SIZE) {
+        const ratio = w / h;
         if (w > h) {
-          h = Math.round((h * MAX_SIZE) / w);
           w = MAX_SIZE;
+          h = Math.round(MAX_SIZE / ratio);
         } else {
-          w = Math.round((w * MAX_SIZE) / h);
           h = MAX_SIZE;
+          w = Math.round(MAX_SIZE * ratio);
         }
       }
 
@@ -71,7 +77,6 @@ export const extractContourFromImage = (
 
       // 2. Moore-Neighbor Tracing
       const contour: Point[] = [];
-      const boundary: Point[] = [];
       
       let currX = startX;
       let currY = startY;
@@ -91,33 +96,30 @@ export const extractContourFromImage = (
         { dx: -1, dy: -1 } // NW
       ];
 
-      // To find the next neighbor, we start scanning clockwise from the backtrack position
-      // We need to map (backtrack - current) to an index in neighborOffsets
-      
       contour.push({ x: startX, y: startY });
 
       // Max iterations to prevent infinite loops on complex noise
       let iterations = 0;
-      const MAX_ITER = w * h; 
+      const MAX_ITER = w * h * 2; // Allow some overlap for complex shapes, but limit it.
 
       while (iterations < MAX_ITER) {
           // Find direction of backtrack relative to current
           // We search CLOCKWISE starting from the pixel AFTER the backtrack pixel
           
           let foundNext = false;
-          
-          // Find index of backtrack vector
           let startSearchIdx = 0;
-          // Simple search for the neighbor index that matches backtrack
+
+          // Find which neighbor index corresponds to backtrack
+          // If backtrack is not a direct neighbor (can happen in rare single-pixel skips), default to 0
           for(let i=0; i<8; i++) {
-              if (currX + neighborOffsets[i].dx === backtrackX && 
-                  currY + neighborOffsets[i].dy === backtrackY) {
-                  startSearchIdx = i;
-                  break;
-              }
+             if (currX + neighborOffsets[i].dx === backtrackX && 
+                 currY + neighborOffsets[i].dy === backtrackY) {
+                 startSearchIdx = i;
+                 break;
+             }
           }
 
-          // Scan clockwise
+          // Scan clockwise around current pixel
           for (let i = 0; i < 8; i++) {
               const idx = (startSearchIdx + 1 + i) % 8; // Start one after backtrack
               const checkX = currX + neighborOffsets[idx].dx;
@@ -127,7 +129,7 @@ export const extractContourFromImage = (
                   // Found next boundary pixel
                   contour.push({ x: checkX, y: checkY });
                   
-                  // Update backtrack to be the pixel immediately preceding this one in the scan (counter-clockwise)
+                  // Update backtrack to be the pixel immediately preceding this one in the scan
                   // The one we just came from effectively becomes the new backtrack for the next step, 
                   // but specifically the "white" pixel we scanned just before finding the black one.
                   const prevIdx = (idx + 7) % 8; // (idx - 1 + 8) % 8
@@ -142,11 +144,13 @@ export const extractContourFromImage = (
           }
           
           if (!foundNext) {
-              // Isolated pixel
+              // Isolated pixel or trapped
               break;
           }
 
-          // Stop condition: Back to start (Jacob's stopping criterion is better but simple check works for simple shapes)
+          // Stop condition: Back to start
+          // We check if we are at start AND the next backtrack direction is the same as initial
+          // But simple coord check is usually enough for visualizer purposes
           if (currX === startX && currY === startY) {
               break;
           }
@@ -154,18 +158,32 @@ export const extractContourFromImage = (
           iterations++;
       }
       
+      if (contour.length < 3) {
+          resolve([]);
+          return;
+      }
+
       // Center the contour
       const cx = contour.reduce((sum, p) => sum + p.x, 0) / contour.length;
       const cy = contour.reduce((sum, p) => sum + p.y, 0) / contour.length;
       
+      // Invert Y for standard math coordinates if desired, but here we just center
+      // Note: Canvas Y is down, Math Y is up. The visualizer handles the flip usually via scale(-1) or logic.
+      // Here we provide raw image coords centered.
       const centeredContour = contour.map(p => ({
-          x: (p.x - cx), // flip y for standard coord system if needed, but canvas is top-left
+          x: (p.x - cx), 
           y: (p.y - cy)
       }));
 
       resolve(centeredContour);
     };
-    img.onerror = (e) => reject(e);
+    
+    img.onerror = (e) => {
+        // Fallback for some CORS or load errors
+        console.error("Image load failed", e);
+        reject("Failed to load image for tracing.");
+    };
+    
     img.src = imageSrc;
   });
 };

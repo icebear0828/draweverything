@@ -1,8 +1,9 @@
+
 import { Complex, FourierCoefficient, Point } from '../types';
 
 // High-quality resampling to ensure uniform distribution of points along the path
 export const resamplePath = (points: Point[], targetCount: number): Complex[] => {
-    if (points.length === 0) return [];
+    if (!points || points.length < 2) return [];
     
     // Calculate total length
     let totalLen = 0;
@@ -18,12 +19,17 @@ export const resamplePath = (points: Point[], targetCount: number): Complex[] =>
     // Close the loop distance
     const dx = points[0].x - points[points.length-1].x;
     const dy = points[0].y - points[points.length-1].y;
-    totalLen += Math.sqrt(dx*dx + dy*dy);
+    const closeDist = Math.sqrt(dx*dx + dy*dy);
+    totalLen += closeDist;
     dists.push(totalLen); 
     
+    // If path is a single dot or corrupted
+    if (totalLen < 0.0001) return Array(targetCount).fill({re: points[0].x, im: points[0].y});
+
     const extendedPoints = [...points, points[0]];
 
     const resampled: Complex[] = [];
+    // Ensure we don't step beyond bounds
     const step = totalLen / targetCount;
     
     let idx = 0;
@@ -31,11 +37,13 @@ export const resamplePath = (points: Point[], targetCount: number): Complex[] =>
     for (let i = 0; i < targetCount; i++) {
         const targetDist = i * step;
         
-        while (idx < dists.length - 1 && dists[idx + 1] < targetDist) {
+        // Find segment
+        while (idx < dists.length - 2 && dists[idx + 1] <= targetDist) {
             idx++;
         }
         
-        if (idx >= extendedPoints.length - 1) break;
+        // Safe guard
+        if (idx >= extendedPoints.length - 1) idx = extendedPoints.length - 2;
 
         const p1 = extendedPoints[idx];
         const p2 = extendedPoints[idx+1];
@@ -44,7 +52,7 @@ export const resamplePath = (points: Point[], targetCount: number): Complex[] =>
         const segmentLen = distEnd - distStart;
         
         let t = 0;
-        if (segmentLen > 0.0001) {
+        if (segmentLen > 0.000001) {
             t = (targetDist - distStart) / segmentLen;
         }
 
@@ -63,12 +71,15 @@ export const resamplePath = (points: Point[], targetCount: number): Complex[] =>
 export const dft = (x: Complex[]): FourierCoefficient[] => {
   const X: FourierCoefficient[] = [];
   const N = x.length;
+  if (N === 0) return [];
+
+  // Optimization: For visualization, we often don't need all N coefficients if N is huge (2000+).
+  // However, removing them changes the shape. We'll keep them but might consider filtering later.
 
   for (let k = 0; k < N; k++) {
     let re = 0;
     let im = 0;
 
-    // Optimization: Precalculate angle part
     const angleConst = (2 * Math.PI * k) / N;
 
     for (let n = 0; n < N; n++) {

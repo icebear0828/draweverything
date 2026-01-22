@@ -14,10 +14,10 @@ export const generateCharacterImage = async (prompt: string): Promise<string> =>
   // works best on the boundary of a solid shape. 
   // Line drawings often result in "double lines" (tracing the thickness of the stroke).
   const enhancedPrompt = `
+    Generate an image.
     Create a high-contrast solid black silhouette of ${prompt} on a pure white background.
     Style: Vector art, flat, minimal, no internal details, no shading.
     The shape should be centered and clearly defined.
-    Aspect ratio 1:1.
   `;
 
   try {
@@ -26,15 +26,26 @@ export const generateCharacterImage = async (prompt: string): Promise<string> =>
       contents: {
         parts: [{ text: enhancedPrompt }]
       },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1"
+        }
+      }
     });
 
     // The model (flash-image) usually returns inlineData (base64) or sometimes text depending on config.
     // We scan parts.
-    if (response.candidates && response.candidates[0].content && response.candidates[0].content.parts) {
+    if (response.candidates?.[0]?.content?.parts) {
         for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData && part.inlineData.data) {
+            if (part.inlineData?.data) {
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
+        }
+        
+        // Check if text was returned instead (e.g. safety refusal or misunderstanding)
+        const textPart = response.candidates[0].content.parts.find(p => p.text);
+        if (textPart?.text) {
+            throw new Error(`Gemini returned text instead of image: ${textPart.text.slice(0, 100)}...`);
         }
     }
     
