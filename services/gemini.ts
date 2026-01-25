@@ -9,7 +9,7 @@ export const generateCharacterImage = async (prompt: string): Promise<string> =>
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+
   // We request a solid silhouette because the contour tracer (Moore-Neighbor)
   // works best on the boundary of a solid shape. 
   // Line drawings often result in "double lines" (tracing the thickness of the stroke).
@@ -36,19 +36,19 @@ export const generateCharacterImage = async (prompt: string): Promise<string> =>
     // The model (flash-image) usually returns inlineData (base64) or sometimes text depending on config.
     // We scan parts.
     if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData?.data) {
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            }
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData?.data) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
-        
-        // Check if text was returned instead (e.g. safety refusal or misunderstanding)
-        const textPart = response.candidates[0].content.parts.find(p => p.text);
-        if (textPart?.text) {
-            throw new Error(`Gemini returned text instead of image: ${textPart.text.slice(0, 100)}...`);
-        }
+      }
+
+      // Check if text was returned instead (e.g. safety refusal or misunderstanding)
+      const textPart = response.candidates[0].content.parts.find(p => p.text);
+      if (textPart?.text) {
+        throw new Error(`Gemini returned text instead of image: ${textPart.text.slice(0, 100)}...`);
+      }
     }
-    
+
     throw new Error("No image data returned from Gemini.");
 
   } catch (error) {
