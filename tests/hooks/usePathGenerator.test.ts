@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePathGenerator } from '../../hooks/usePathGenerator';
+import { PresetDef } from '../../types';
 
 // Mock all dependencies
 vi.mock('../../utils/math', () => ({
@@ -119,7 +120,7 @@ describe('usePathGenerator', () => {
         it('should load preset and generate paths', async () => {
             const { result } = renderHook(() => usePathGenerator());
 
-            let presetResult: any;
+            let presetResult: PresetDef | null;
             await act(async () => {
                 presetResult = await result.current.loadPreset('TEST_PRESET');
             });
@@ -136,7 +137,7 @@ describe('usePathGenerator', () => {
         it('should return null for unknown preset', async () => {
             const { result } = renderHook(() => usePathGenerator());
 
-            let presetResult: any;
+            let presetResult: PresetDef | null;
             await act(async () => {
                 presetResult = await result.current.loadPreset('UNKNOWN_PRESET');
             });
