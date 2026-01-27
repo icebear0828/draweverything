@@ -3,7 +3,7 @@
  * 分类预设选择面板
  */
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, type FC } from 'react';
 import { PRESETS, PRESET_CATEGORIES } from '../constants/presets';
 import type { PresetCategory } from '../types';
 
@@ -12,7 +12,7 @@ interface PresetPanelProps {
   currentPresetKey?: string;
 }
 
-const PresetPanel: React.FC<PresetPanelProps> = ({
+const PresetPanel: FC<PresetPanelProps> = ({
   onSelectPreset,
   currentPresetKey
 }) => {

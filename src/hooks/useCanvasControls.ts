@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, RefObject } from 'react';
+import { useState, useRef, useEffect, useCallback, type RefObject, type MouseEvent } from 'react';
 
 export interface CanvasControlsState {
     zoom: number;
@@ -15,8 +15,8 @@ export interface CanvasControlsResult extends CanvasControlsState {
     setPan: (pan: { x: number; y: number }) => void;
 
     // Mouse Handlers (to attach to container)
-    handleMouseDown: (e: React.MouseEvent) => void;
-    handleMouseMove: (e: React.MouseEvent) => void;
+    handleMouseDown: (e: MouseEvent) => void;
+    handleMouseMove: (e: MouseEvent) => void;
     handleMouseUp: () => void;
 
     // Wheel setup effect (call this in useEffect for canvas)

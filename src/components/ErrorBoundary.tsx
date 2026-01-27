@@ -3,7 +3,7 @@
  * React 错误边界，捕获子组件渲染错误
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode, type FC } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -19,7 +19,7 @@ interface State {
 /**
  * Default error fallback UI
  */
-const ErrorFallback: React.FC<{
+const ErrorFallback: FC<{
   error: Error | null;
   onReset: () => void;
 }> = ({ error, onReset }) => (

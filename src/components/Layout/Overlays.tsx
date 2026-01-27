@@ -3,11 +3,11 @@
  * 覆盖层：Loading + Error
  */
 
-import React from 'react';
+import type { FC } from 'react';
 import { Activity, Loader2, Undo2 } from 'lucide-react';
 import { useDataStore } from '../../stores';
 
-const Overlays: React.FC = () => {
+const Overlays: FC = () => {
   const loading = useDataStore((s) => s.loading);
   const error = useDataStore((s) => s.error);
   const resetError = useDataStore((s) => s.resetError);

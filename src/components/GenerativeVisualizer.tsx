@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, type FC } from 'react';
 import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { ParticleFormula } from '../types';
 import { compileParticleFormula, CompiledParticleFormula } from '../utils/particleCompiler';
@@ -10,7 +10,7 @@ interface GenerativeVisualizerProps {
     formula?: ParticleFormula;
 }
 
-const GenerativeVisualizer: React.FC<GenerativeVisualizerProps> = ({
+const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
     isRunning,
     speed,
     formula

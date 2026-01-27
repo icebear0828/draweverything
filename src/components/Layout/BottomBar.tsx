@@ -3,11 +3,11 @@
  * 底部栏：图层切换 + 播放控制 + 速度
  */
 
-import React from 'react';
+import type { FC } from 'react';
 import { Play, Pause, Sparkles, Circle } from 'lucide-react';
 import { useSimulationStore, useConfigStore } from '../../stores';
 
-const BottomBar: React.FC = () => {
+const BottomBar: FC = () => {
   const isRunning = useSimulationStore((s) => s.isRunning);
   const speed = useSimulationStore((s) => s.speed);
   const setRunning = useSimulationStore((s) => s.setRunning);
@@ -26,22 +26,20 @@ const BottomBar: React.FC = () => {
           <button
             onClick={toggleParticle}
             title="粒子层 (Particle)"
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-              showParticle
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${showParticle
                 ? 'bg-purple-500/30 text-purple-400 ring-1 ring-purple-500/50'
                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-            }`}
+              }`}
           >
             <Sparkles className="w-4 h-4" />
           </button>
           <button
             onClick={toggleFourier}
             title="FFT 层 (Fourier)"
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-              showFourier
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${showFourier
                 ? 'bg-cyan-500/30 text-cyan-400 ring-1 ring-cyan-500/50'
                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-            }`}
+              }`}
           >
             <Circle className="w-4 h-4" />
           </button>

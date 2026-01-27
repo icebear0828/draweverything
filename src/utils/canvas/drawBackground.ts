@@ -25,8 +25,8 @@ export const drawBackground = (
   const {
     gridOpacity = 0.03,
     axisOpacity = 0.08,
-    showGrid = true,
-    showAxes = true,
+    showGrid = false,
+    showAxes = false,
   } = options;
 
   // Background color is handled by CSS, we just clear

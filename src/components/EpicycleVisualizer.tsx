@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, type FC } from 'react';
 import { ProcessedLayer, FourierCoefficient } from '../types';
 import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { drawArrow, drawBackground } from '../utils/canvas';
@@ -60,7 +60,7 @@ interface EpicycleVisualizerProps {
   transparent?: boolean;
 }
 
-const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
+const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
   layers,
   isRunning,
   speedMultiplier,

@@ -3,7 +3,7 @@
  * 统一输入入口 - 支持函数输入和自然语言 AI 生成
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type FC, type FormEvent, type ChangeEvent } from 'react';
 import { Sparkles, Code, X, Loader2 } from 'lucide-react';
 
 type InputMode = 'function' | 'ai';
@@ -15,7 +15,7 @@ interface CommandBarProps {
   placeholder?: string;
 }
 
-const CommandBar: React.FC<CommandBarProps> = ({
+const CommandBar: FC<CommandBarProps> = ({
   onSubmitFunction,
   onSubmitAI,
   loading = false,
@@ -42,7 +42,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFocused]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!value.trim() || loading) return;
 
@@ -72,7 +72,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
     return mode; // 保持当前模式
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
     // 自动检测模式

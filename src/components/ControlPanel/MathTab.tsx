@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import {
     RefreshCw,
     ChevronRight,
@@ -26,7 +26,7 @@ interface MathTabProps {
     onCompileFunctions: () => void;
 }
 
-const MathTab: React.FC<MathTabProps> = ({
+const MathTab: FC<MathTabProps> = ({
     layers,
     tMin,
     tMax,

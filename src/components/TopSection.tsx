@@ -3,7 +3,7 @@
  * 顶部区域：Logo + CommandBar + PresetPanel
  */
 
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import { Sigma, Settings, ChevronUp, ChevronDown } from 'lucide-react';
 import CommandBar from './CommandBar';
 import PresetPanel from './PresetPanel';
@@ -16,7 +16,7 @@ interface TopSectionProps {
   onOpenSettings?: () => void;
 }
 
-const TopSection: React.FC<TopSectionProps> = ({
+const TopSection: FC<TopSectionProps> = ({
   onLoadPreset,
   onSubmitFunction,
   onSubmitAI,

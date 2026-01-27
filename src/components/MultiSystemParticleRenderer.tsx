@@ -4,7 +4,7 @@
  * Renders multiple particle expression systems with composition support
  */
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, type FC } from 'react';
 import { useCanvasControls } from '../hooks/useCanvasControls';
 import {
     ParticleExpressionSystem,
@@ -24,7 +24,7 @@ interface MultiSystemParticleRendererProps {
     speed: number;
 }
 
-const MultiSystemParticleRenderer: React.FC<MultiSystemParticleRendererProps> = ({
+const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
     preset,
     system,
     isRunning,

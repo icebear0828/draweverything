@@ -3,7 +3,7 @@
  * 使用共享的 canvas store，让多个可视化组件同步缩放/平移
  */
 
-import React, { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, type MutableRefObject, type MouseEvent } from 'react';
 import { useCanvasStore } from '../stores/useCanvasStore';
 
 const ZOOM_SENSITIVITY = 0.001;
@@ -14,12 +14,12 @@ export interface SharedCanvasControlsResult {
   pan: { x: number; y: number };
 
   // Refs for animation loop access (synced with store)
-  zoomRef: React.MutableRefObject<number>;
-  panRef: React.MutableRefObject<{ x: number; y: number }>;
+  zoomRef: MutableRefObject<number>;
+  panRef: MutableRefObject<{ x: number; y: number }>;
 
   // Mouse Handlers
-  handleMouseDown: (e: React.MouseEvent) => void;
-  handleMouseMove: (e: React.MouseEvent) => void;
+  handleMouseDown: (e: MouseEvent) => void;
+  handleMouseMove: (e: MouseEvent) => void;
   handleMouseUp: () => void;
 
   // Wheel setup

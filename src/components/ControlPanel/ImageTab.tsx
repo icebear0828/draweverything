@@ -1,13 +1,13 @@
-import React from 'react';
+import type { FC, ChangeEvent } from 'react';
 import { Upload } from 'lucide-react';
 import { PRESET_URIS } from '../../utils/presetShapes';
 
 interface ImageTabProps {
-    onProcessImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onProcessImage: (e: ChangeEvent<HTMLInputElement>) => void;
     onProcessSample: (key: keyof typeof PRESET_URIS) => void;
 }
 
-const ImageTab: React.FC<ImageTabProps> = ({
+const ImageTab: FC<ImageTabProps> = ({
     onProcessImage,
     onProcessSample,
 }) => {

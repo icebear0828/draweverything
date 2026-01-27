@@ -1,5 +1,5 @@
 
-import React, { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, type FC } from 'react';
 import EpicycleVisualizer from './components/EpicycleVisualizer';
 import GenerativeVisualizer from './components/GenerativeVisualizer';
 import ControlPanel from './components/ControlPanel';
@@ -16,7 +16,7 @@ import {
 import { useAppHandlers } from './hooks/useAppHandlers';
 import { parseFunctionInput } from './utils/parseFunction';
 
-const App: React.FC = () => {
+const App: FC = () => {
     // UI Store
     const isInspectorOpen = useUIStore(s => s.isInspectorOpen);
     const setInspectorOpen = useUIStore(s => s.setInspectorOpen);

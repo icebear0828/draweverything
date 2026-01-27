@@ -3,7 +3,7 @@
  * 顶部栏：Logo + 预设菜单
  */
 
-import React from 'react';
+import type { FC } from 'react';
 import { Sigma, ChevronDown } from 'lucide-react';
 import { useUIStore, useConfigStore } from '../../stores';
 import { PRESETS } from '../../constants/presets';
@@ -12,7 +12,7 @@ interface TopBarProps {
   onLoadPreset: (key: string) => void;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onLoadPreset }) => {
+const TopBar: FC<TopBarProps> = ({ onLoadPreset }) => {
   const isPresetMenuOpen = useUIStore((s) => s.isPresetMenuOpen);
   const setPresetMenuOpen = useUIStore((s) => s.setPresetMenuOpen);
   const currentPresetKey = useConfigStore((s) => s.currentPresetKey);
@@ -59,11 +59,10 @@ const TopBar: React.FC<TopBarProps> = ({ onLoadPreset }) => {
                 <button
                   key={key}
                   onClick={() => onLoadPreset(key)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center justify-between group ${
-                    currentPresetKey === key
-                      ? 'bg-cyan-950/30 text-cyan-200'
-                      : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
-                  }`}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center justify-between group ${currentPresetKey === key
+                    ? 'bg-cyan-950/30 text-cyan-200'
+                    : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+                    }`}
                 >
                   <span>{val.label.replace(/.*:/, '').trim()}</span>
                   {val.layers && (

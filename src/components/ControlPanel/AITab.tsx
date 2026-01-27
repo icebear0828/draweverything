@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import { RefreshCw, Wand2 } from 'lucide-react';
 
 interface AITabProps {
@@ -6,7 +6,7 @@ interface AITabProps {
     onProcessAI: (prompt: string) => void;
 }
 
-const AITab: React.FC<AITabProps> = ({
+const AITab: FC<AITabProps> = ({
     loading,
     onProcessAI,
 }) => {
