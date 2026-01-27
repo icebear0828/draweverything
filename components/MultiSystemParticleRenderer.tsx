@@ -43,16 +43,26 @@ const MultiSystemParticleRenderer: React.FC<MultiSystemParticleRendererProps> = 
         if (system) {
             return [compileParticleExpressionSystem(system)];
         }
-        // Default spiral galaxy
+        // Default spiral galaxy - 极坐标公式 (1.md 参考实现)
+        // r_base = n^(3/2) / (n + 1000)
+        // wave = sin(0.1 * n * sin(83.333 * t))
+        // r_final = r_base * (1 + 0.3 * wave)  // 呼吸调制 [0.7, 1.3]
+        // theta = 0.1 * n * t (方位角)
         return [compileParticleExpressionSystem({
             definitions: {
+                // r_base: 基础半径
                 r_base: 'Math.pow(n, 1.5) / (n + 1000)',
-                wave: 'Math.sin(0.1 * n * Math.sin(83.333 * t))',
+                // wave: 波形调制因子
+                wave: 'Math.sin(0.1 * n * Math.sin((250/3) * t))',
+                // r: 最终半径 = r_base * (1 + 0.3 * wave)，范围 [0.7, 1.3]
                 r: 'r_base * (1 + 0.3 * wave)',
+                // theta: 方位角
                 theta: '0.1 * n * t'
             },
             output: {
+                // 极坐标转笛卡尔: x = r * cos(theta)
                 x: 'r * Math.cos(theta)',
+                // y = r * sin(theta)
                 y: 'r * Math.sin(theta)',
                 alpha: '0.3 + 0.7 * Math.abs(wave)'
             },

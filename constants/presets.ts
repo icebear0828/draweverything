@@ -11,10 +11,16 @@ export const PRESETS: Record<string, PresetDef> = {
     scale: 200,
     layers: [],
     particle: {
+      // 极坐标公式 (1.md 参考实现):
+      // r_base = n^(3/2) / (n + 1000)
+      // wave = sin(0.1 * n * sin(83.333 * t))
+      // r_final = r_base * (1 + 0.3 * wave)  // 呼吸调制 [0.7, 1.3]
+      // theta = 0.1 * n * t (方位角)
       radiusFn: 'Math.pow(n, 1.5) / (n + 1000)',
-      thetaFn: '0.1 * n * t',
-      radiusModFn: '1 + 0.3 * Math.sin(0.1 * n * Math.sin(83.333 * t))',
-      alphaFn: '0.3 + 0.7 * Math.abs(Math.sin(0.1 * n * Math.sin(83.333 * t)))',
+      thetaFn: '0.1 * n * t',  // 方位角
+      // 波形调制: (1 + 0.3 * wave)，范围 [0.7, 1.3]，半径始终为正
+      radiusModFn: '1 + 0.3 * Math.sin(0.1 * n * Math.sin((250/3) * t))',
+      alphaFn: '0.3 + 0.7 * Math.abs(Math.sin(0.1 * n * Math.sin((250/3) * t)))',
       particleCount: 4000,
       colorHex: '#ffffff',
       timeScale: 0.0002
