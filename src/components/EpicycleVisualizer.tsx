@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import { ProcessedLayer, FourierCoefficient } from '../types';
-import { useCanvasControls } from '../hooks/useCanvasControls';
+import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { drawArrow, drawBackground } from '../utils/canvas';
 import {
   PATH_HISTORY_MAX_POINTS,
@@ -77,7 +77,7 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
   const speedRef = useRef(speedMultiplier);
   const historyRef = useRef<LayerHistoryTracker[]>([]);
 
-  // Use the unified canvas controls hook
+  // Use the shared canvas controls hook (synced with other visualizers)
   const {
     zoom,
     zoomRef,
@@ -86,7 +86,7 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
     handleMouseMove,
     handleMouseUp,
     setupWheelHandler
-  } = useCanvasControls();
+  } = useSharedCanvasControls();
 
   // Pre-compute primary indices for each layer (first non-zero frequency)
   // This avoids recalculating in every frame of the animation loop

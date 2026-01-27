@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
-import { useCanvasControls } from '../hooks/useCanvasControls';
+import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { ParticleFormula } from '../types';
 import { compileParticleFormula, CompiledParticleFormula } from '../utils/particleCompiler';
 
@@ -32,7 +32,7 @@ const GenerativeVisualizer: React.FC<GenerativeVisualizerProps> = ({
         formulaRef.current = compiledFormula;
     }, [compiledFormula]);
 
-    // Use the unified canvas controls hook
+    // Use the shared canvas controls hook (synced with other visualizers)
     const {
         zoomRef,
         panRef,
@@ -40,7 +40,7 @@ const GenerativeVisualizer: React.FC<GenerativeVisualizerProps> = ({
         handleMouseMove,
         handleMouseUp,
         setupWheelHandler
-    } = useCanvasControls();
+    } = useSharedCanvasControls();
 
     // Setup wheel handler for canvas
     useEffect(() => {

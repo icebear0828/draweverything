@@ -8,6 +8,7 @@ export { useSimulationStore } from './useSimulationStore';
 export { useConfigStore } from './useConfigStore';
 export { useDataStore } from './useDataStore';
 export { useLayerStore } from './useLayerStore';
+export { useCanvasStore } from './useCanvasStore';
 
 // Re-export types from types/stores.ts
 export type {
