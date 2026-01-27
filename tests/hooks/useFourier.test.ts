@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useFourier } from '../../hooks/useFourier';
-import type { Complex, MathLayer } from '../../types';
+import { useFourier } from '@/hooks/useFourier';
+import type { Complex, MathLayer } from '@/types';
 
 // Mock the dft function to avoid heavy computation in tests
-vi.mock('../../utils/math', () => ({
+vi.mock('@/utils/math', () => ({
     dft: vi.fn((input: Complex[]) => input.map((c, i) => ({
         re: c.re,
         im: c.im,

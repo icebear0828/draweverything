@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temp files
+*.md
+!README.md
+tsc_log*.txt
+
+# Coverage
+coverage/
+
+# AI Agent Configuration
+.agents/
+.claude/
+.gemini/
+
+# Environment Configuration
+.env
+.env.*
+!.env.example

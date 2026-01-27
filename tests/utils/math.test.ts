@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resamplePath, dft, generateFromFunction } from '../../utils/math';
-import type { Point, Complex } from '../../types';
+import { resamplePath, dft, generateFromFunction } from '@/utils/math';
+import type { Point, Complex } from '@/types';
 
 describe('resamplePath', () => {
     it('should return empty array for less than 2 points', () => {

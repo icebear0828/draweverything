@@ -6,8 +6,8 @@ import { describe, it, expect } from 'vitest';
 import {
     compileParticleExpressionSystem,
     executeParticle
-} from '../../../utils/particle/codeGenerator';
-import { ParticleExpressionSystem, ParticleExpressionError } from '../../../types/particle';
+} from '@/utils/particle/codeGenerator';
+import { ParticleExpressionSystem, ParticleExpressionError } from '@/types/particle';
 
 describe('compileParticleExpressionSystem', () => {
     it('should compile spiral galaxy formula', () => {

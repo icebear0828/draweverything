@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRESETS } from '../../constants/presets';
+import { PRESETS } from '@/constants/presets';
 
 describe('PRESETS', () => {
     it('should have multiple presets defined', () => {

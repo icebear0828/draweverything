@@ -16,8 +16,8 @@ import {
     rainbow,
     registerPreset,
     resolvePresetInheritance
-} from '../../../utils/particle/stdlib';
-import { ParticlePreset } from '../../../types/particle';
+} from '@/utils/particle/stdlib';
+import { ParticlePreset } from '@/types/particle';
 
 describe('noise functions', () => {
     it('hash should return values between 0 and 1', () => {

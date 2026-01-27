@@ -9,7 +9,26 @@
       "Bash(npx tsc:*)",
       "Bash(pnpm add:*)",
       "Bash(findstr:*)",
-      "Bash(pnpm install)"
+      "Bash(pnpm install)",
+      "Bash(dir:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(done)",
+      "Bash(pnpm tsc:*)",
+      "Bash(timeout 10 pnpm dev:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:*)",
+      "Bash(npx vite:*)",
+      "Bash(npx vitest run)",
+      "Bash(node node_modules/vitest/vitest.mjs run:*)",
+      "Bash(pnpm:*)",
+      "Bash(npm install)",
+      "Bash(node:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm --version:*)",
+      "Bash(where:*)",
+      "Bash(cmd /c \"cd /d D:\\\\rag\\\\draweverything && npm install\")",
+      "Bash(npm.cmd run lint:*)"
     ]
   }
 }

@@ -12,6 +12,8 @@
 | [build](./build/SKILL.md) | `/build` | 执行生产构建并验证产物 | bun/pnpm |
 | [math-debug](./math-debug/SKILL.md) | `/math-debug` | 傅里叶算法调试与数学函数验证 | - |
 | [gemini-prompt](./gemini-prompt/SKILL.md) | `/gemini-prompt` | Gemini AI 提示词优化与集成维护 | - |
+| [preset](./preset/SKILL.md) | `/preset` | 创建新的数学预设、粒子公式或多图层场景 | - |
+| [code-audit](./code-audit/SKILL.md) | `/audit` | 多维度项目代码审计 - 分析隐性/显性 Bug、耦合度、架构、鲁棒性、安全性等 | - |
 
 ---
 
@@ -36,6 +38,14 @@
 ```
 /math-debug    # 傅里叶算法调试
 /gemini-prompt # Gemini 集成维护
+/audit         # 多维度代码审计
+```
+
+### 内容创作
+```
+/preset math      # 创建数学预设
+/preset particle  # 创建粒子预设
+/preset scene     # 创建多图层场景
 ```
 
 ### Skill 管理
@@ -52,7 +62,9 @@
 |-------|----------|----------|
 | dev | v1.0.0 | 2026-01-22 |
 | build | v1.0.0 | 2026-01-22 |
-| math-debug | v1.0.0 | 2026-01-22 |
+| math-debug | v2.0.0 | 2026-01-26 |
 | gemini-prompt | v1.1.0 | 2026-01-22 |
+| preset | v1.0.0 | 2026-01-26 |
+| code-audit | v1.0.0 | 2026-01-26 |
 | skill-generator | v3.4.0 | - |
 | skill-rlaif | v2.1.0 | - |

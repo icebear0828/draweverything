@@ -8,8 +8,8 @@ import {
     extractVariables,
     buildDependencyGraph,
     validateOutput
-} from '../../../utils/particle/expressionParser';
-import { ParticleExpressionError } from '../../../types/particle';
+} from '@/utils/particle/expressionParser';
+import { ParticleExpressionError } from '@/types/particle';
 
 describe('tokenize', () => {
     it('should tokenize simple expression', () => {
