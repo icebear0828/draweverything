@@ -21,6 +21,9 @@ const MATH_METHODS = new Set([
     'sign', 'random'
 ]);
 
+// Loop functions (handled specially by compiler)
+const LOOP_FUNCTIONS = new Set(['sum', 'prod']);
+
 /**
  * Token types for simple lexer
  */
@@ -100,12 +103,33 @@ export function tokenize(expression: string): Token[] {
 }
 
 /**
+ * Extract loop iterators from an expression
+ * These should be excluded from dependency detection
+ */
+function extractLoopIterators(expression: string): Set<string> {
+    const iterators = new Set<string>();
+
+    // Match sum(iterator, ...) or prod(iterator, ...)
+    const loopRegex = /\b(sum|prod)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*,/g;
+    let match;
+
+    while ((match = loopRegex.exec(expression)) !== null) {
+        iterators.add(match[2]);
+    }
+
+    return iterators;
+}
+
+/**
  * Extract variable references from an expression
  * Returns only user-defined variables (not builtins like n, t, Math)
  */
 export function extractVariables(expression: string): Set<string> {
     const tokens = tokenize(expression);
     const variables = new Set<string>();
+
+    // Get loop iterators to exclude them from dependencies
+    const loopIterators = extractLoopIterators(expression);
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
@@ -125,6 +149,12 @@ export function extractVariables(expression: string): Set<string> {
 
         // Skip Math methods used standalone (shouldn't happen but just in case)
         if (MATH_METHODS.has(name)) continue;
+
+        // Skip loop functions (sum, prod)
+        if (LOOP_FUNCTIONS.has(name)) continue;
+
+        // Skip loop iterators (they are loop-local variables)
+        if (loopIterators.has(name)) continue;
 
         // This is a user variable reference
         variables.add(name);

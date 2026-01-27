@@ -46,6 +46,8 @@ const ALLOWED_FUNCTIONS = new Set([
   'min', 'max', 'hypot', 'mod',
   // 其他数学函数
   'square', 'cube', 'factorial', 'gamma',
+  // 循环函数 (在编译时特殊处理)
+  'sum', 'prod',
 ]);
 
 // ============================================

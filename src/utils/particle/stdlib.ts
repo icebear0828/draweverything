@@ -178,7 +178,93 @@ export const STDLIB_FUNCTIONS = {
 
     // Colors
     hslToHex,
-    rainbow
+    rainbow,
+
+    // Loops (marked as null - handled specially by compiler)
+    sum: null as unknown as typeof __sumLoop,
+    prod: null as unknown as typeof __prodLoop,
+};
+
+// ============================================
+// Loop Runtime Functions
+// ============================================
+
+/**
+ * Runtime sum loop function with iteration limit
+ * Used internally by the loop compiler
+ */
+export function __sumLoop(
+    start: number,
+    end: number,
+    step: number,
+    bodyFn: (i: number) => number,
+    maxIter: number = 10000
+): number {
+    let result = 0;
+    let iterations = 0;
+
+    if (step === 0) {
+        throw new Error('Loop step cannot be zero');
+    }
+
+    const ascending = step > 0;
+
+    for (
+        let i = start;
+        ascending ? i <= end : i >= end;
+        i += step
+    ) {
+        result += bodyFn(i);
+        iterations++;
+        if (iterations > maxIter) {
+            throw new Error(`Sum loop exceeded ${maxIter} iterations`);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Runtime product loop function with iteration limit
+ * Used internally by the loop compiler
+ */
+export function __prodLoop(
+    start: number,
+    end: number,
+    step: number,
+    bodyFn: (i: number) => number,
+    maxIter: number = 10000
+): number {
+    let result = 1;
+    let iterations = 0;
+
+    if (step === 0) {
+        throw new Error('Loop step cannot be zero');
+    }
+
+    const ascending = step > 0;
+
+    for (
+        let i = start;
+        ascending ? i <= end : i >= end;
+        i += step
+    ) {
+        result *= bodyFn(i);
+        iterations++;
+        if (iterations > maxIter) {
+            throw new Error(`Prod loop exceeded ${maxIter} iterations`);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Loop runtime functions for injection into execution context
+ */
+export const LOOP_RUNTIME = {
+    __sumLoop,
+    __prodLoop,
 };
 
 // ============================================

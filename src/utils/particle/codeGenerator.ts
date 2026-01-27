@@ -14,6 +14,9 @@ import {
   ParticleExpressionError,
 } from '../../types/particle';
 import { buildDependencyGraph, validateOutput } from './expressionParser';
+import { hasLoopExpression } from './loopParser';
+import { validateLoopExpression } from './loopValidator';
+import { compileExpressionWithLoops } from './loopCompiler';
 
 // ============================================
 // Compilation Cache
@@ -53,12 +56,47 @@ function preprocessExpression(expr: string): string {
 /**
  * Compile a single expression into a function using mathjs
  * The function receives (n, t, vars) where vars contains computed variable values
+ * Supports loop expressions (sum/prod)
  */
 function compileExpression(
   expression: string,
   variableNames: string[]
-): (n: number, t: number, vars: Record<string, number>) => number {
+): {
+  fn: (n: number, t: number, vars: Record<string, number>) => number;
+  hasLoops?: boolean;
+  loopJsCode?: string;
+} {
   try {
+    // Check if expression contains loops
+    if (hasLoopExpression(expression)) {
+      // Validate loop expression
+      const validation = validateLoopExpression(expression, variableNames);
+      if (!validation.valid) {
+        throw new ParticleExpressionError(
+          validation.error || 'Loop validation failed',
+          'LOOP_ERROR',
+          { expression }
+        );
+      }
+
+      // Compile with loop support
+      const compiled = compileExpressionWithLoops(expression, variableNames);
+
+      // Test compilation
+      const testVars = Object.fromEntries(variableNames.map((v) => [v, 0]));
+      const testResult = compiled.fn(1, 0, testVars);
+      if (typeof testResult !== 'number') {
+        throw new Error('Expression did not return a number');
+      }
+
+      return {
+        fn: compiled.fn,
+        hasLoops: true,
+        loopJsCode: compiled.jsCode,
+      };
+    }
+
+    // No loops - use standard mathjs compilation
     // Preprocess to convert Math.* to mathjs format
     const processedExpr = preprocessExpression(expression);
 
@@ -97,8 +135,11 @@ function compileExpression(
       throw new Error('Expression did not return a number');
     }
 
-    return fn;
+    return { fn };
   } catch (error) {
+    if (error instanceof ParticleExpressionError) {
+      throw error;
+    }
     throw new ParticleExpressionError(
       `Failed to compile expression: ${expression}`,
       'SYNTAX_ERROR',
@@ -201,24 +242,32 @@ export function compileParticleExpressionSystem(
   for (const varName of graph.sortedOrder) {
     const expression = system.definitions[varName];
     const node = graph.nodes.get(varName)!;
+    const compiled = compileExpression(expression, allVarNames);
 
     compiledVariables.push({
       name: varName,
-      fn: compileExpression(expression, allVarNames),
+      fn: compiled.fn,
       dependencies: [...node.dependencies],
+      hasLoops: compiled.hasLoops,
+      loopJsCode: compiled.loopJsCode,
     });
   }
 
   // Compile output expressions
+  const xCompiled = compileExpression(system.output.x, allVarNames);
+  const yCompiled = compileExpression(system.output.y, allVarNames);
+  const alphaCompiled = system.output.alpha
+    ? compileExpression(system.output.alpha, allVarNames)
+    : null;
+  const sizeCompiled = system.output.size
+    ? compileExpression(system.output.size, allVarNames)
+    : null;
+
   const compiledOutput: CompiledParticleOutput = {
-    x: compileExpression(system.output.x, allVarNames),
-    y: compileExpression(system.output.y, allVarNames),
-    alpha: system.output.alpha
-      ? compileExpression(system.output.alpha, allVarNames)
-      : (_n, _t, _vars) => 1,
-    size: system.output.size
-      ? compileExpression(system.output.size, allVarNames)
-      : (_n, _t, _vars) => 1,
+    x: xCompiled.fn,
+    y: yCompiled.fn,
+    alpha: alphaCompiled ? alphaCompiled.fn : (_n, _t, _vars) => 1,
+    size: sizeCompiled ? sizeCompiled.fn : (_n, _t, _vars) => 1,
     color: compileColorExpression(system.output.color || '', allVarNames),
   };
 

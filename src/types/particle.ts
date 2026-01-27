@@ -82,6 +82,8 @@ export interface CompiledVariable {
     name: string;
     fn: (n: number, t: number, vars: Record<string, number>) => number;
     dependencies: string[];
+    hasLoops?: boolean;
+    loopJsCode?: string;
 }
 
 /**
@@ -132,13 +134,66 @@ export interface DependencyGraph {
 }
 
 // ============================================
+// Loop Types
+// ============================================
+
+/**
+ * Configuration for loop safety limits
+ */
+export interface LoopConfig {
+    maxIterations: number;
+    maxNestingDepth: number;
+    maxBodyLength: number;
+    maxTotalIterations: number;
+}
+
+/**
+ * Parsed loop structure
+ */
+export interface ParsedLoop {
+    type: 'sum' | 'prod';
+    iterator: string;
+    start: string;
+    end: string;
+    step: string | null;
+    body: string;
+    position: { start: number; end: number };
+}
+
+/**
+ * Result of loop parsing
+ */
+export interface LoopParseResult {
+    hasLoops: boolean;
+    loops: ParsedLoop[];
+    transformedExpr: string;
+}
+
+/**
+ * Result of loop validation
+ */
+export interface LoopValidationResult {
+    valid: boolean;
+    error?: string;
+    warnings?: string[];
+}
+
+/**
+ * Compiled loop with executor and JS code for export
+ */
+export interface CompiledLoop {
+    executor: (n: number, t: number, vars: Record<string, number>) => number;
+    jsCode: string;
+}
+
+// ============================================
 // Error Types
 // ============================================
 
 export class ParticleExpressionError extends Error {
     constructor(
         message: string,
-        public readonly code: 'UNDEFINED_VAR' | 'CIRCULAR_DEP' | 'SYNTAX_ERROR' | 'RUNTIME_ERROR',
+        public readonly code: 'UNDEFINED_VAR' | 'CIRCULAR_DEP' | 'SYNTAX_ERROR' | 'RUNTIME_ERROR' | 'LOOP_ERROR',
         public readonly details?: Record<string, unknown>
     ) {
         super(message);
