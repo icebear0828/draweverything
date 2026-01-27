@@ -6,6 +6,7 @@ import { useUIStore } from '../stores/useUIStore';
 import { useSimulationStore } from '../stores/useSimulationStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useDataStore } from '../stores/useDataStore';
+import { PRESETS } from '../constants/presets';
 import type { PresetSampleKey } from '../types';
 
 /**
@@ -23,12 +24,21 @@ export const loadPresetCommand = async (key: string): Promise<void> => {
   const presetConfig = applyPresetConfig(key);
   if (!presetConfig) return;
 
-  if (presetConfig.renderer === 'PARTICLE') {
+  const preset = PRESETS[key];
+  const isHybrid = preset?.category === 'hybrid';
+  const hasFourierLayers = preset?.layers && preset.layers.length > 0;
+
+  // 纯粒子预设，无需加载 FFT 数据
+  if (presetConfig.renderer === 'PARTICLE' && !isHybrid) {
     resume();
     return;
   }
 
-  await loadPreset(key);
+  // 混合预设或 FFT 预设，需要加载 FFT 数据
+  if (hasFourierLayers) {
+    await loadPreset(key);
+  }
+
   resume();
 };
 

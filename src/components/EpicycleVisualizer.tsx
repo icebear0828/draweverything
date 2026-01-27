@@ -56,12 +56,15 @@ interface EpicycleVisualizerProps {
   layers: ProcessedLayer[];
   isRunning: boolean;
   speedMultiplier: number;
+  /** 背景透明模式 (用于图层叠加) */
+  transparent?: boolean;
 }
 
 const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
   layers,
   isRunning,
-  speedMultiplier
+  speedMultiplier,
+  transparent = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -345,7 +348,7 @@ const EpicycleVisualizer: React.FC<EpicycleVisualizerProps> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative overflow-hidden cursor-move active:cursor-grabbing bg-[#050505]"
+      className={`w-full h-full relative overflow-hidden cursor-move active:cursor-grabbing ${transparent ? '' : 'bg-[#050505]'}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

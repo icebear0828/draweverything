@@ -11,7 +11,7 @@ export { AppMode } from './core';
 export type { MathLayer, ProcessedLayer } from './layer';
 
 // Preset types
-export type { ParticleFormula, PresetDef } from './preset';
+export type { ParticleFormula, PresetDef, PresetCategory, CategoryMeta } from './preset';
 
 // Store types
 export type {

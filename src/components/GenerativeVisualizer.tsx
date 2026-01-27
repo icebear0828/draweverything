@@ -132,7 +132,7 @@ const GenerativeVisualizer: React.FC<GenerativeVisualizerProps> = ({
     return (
         <div
             ref={containerRef}
-            className="w-full h-full relative cursor-move active:cursor-grabbing bg-[#050505]"
+            className="w-full h-full relative cursor-move active:cursor-grabbing"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

@@ -1,10 +1,11 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import EpicycleVisualizer from './components/EpicycleVisualizer';
 import GenerativeVisualizer from './components/GenerativeVisualizer';
 import ControlPanel from './components/ControlPanel';
 import ErrorBoundary from './components/ErrorBoundary';
-import Layout, { TopBar, BottomBar, Overlays } from './components/Layout';
+import Layout, { BottomBar, Overlays } from './components/Layout';
+import TopSection from './components/TopSection';
 import {
     useUIStore,
     useSimulationStore,
@@ -13,6 +14,7 @@ import {
     useLayerStore
 } from './stores';
 import { useAppHandlers } from './hooks/useAppHandlers';
+import { parseFunctionInput } from './utils/parseFunction';
 
 const App: React.FC = () => {
     // UI Store
@@ -29,6 +31,8 @@ const App: React.FC = () => {
     const scale = useConfigStore(s => s.scale);
     const currentRenderer = useConfigStore(s => s.currentRenderer);
     const particleFormula = useConfigStore(s => s.particleFormula);
+    const showParticle = useConfigStore(s => s.showParticle);
+    const showFourier = useConfigStore(s => s.showFourier);
     const setTMin = useConfigStore(s => s.setTMin);
     const setTMax = useConfigStore(s => s.setTMax);
     const setScale = useConfigStore(s => s.setScale);
@@ -52,6 +56,21 @@ const App: React.FC = () => {
         handleSampleProcess,
     } = useAppHandlers();
 
+    // 处理函数输入
+    const handleFunctionInput = useCallback((input: string) => {
+        const parsed = parseFunctionInput(input);
+        if (parsed && parsed.xFn && parsed.yFn) {
+            // 更新图层配置
+            updateLayer(0, {
+                xFn: parsed.xFn,
+                yFn: parsed.yFn,
+                isPolar: parsed.isPolar,
+            });
+            // 触发编译
+            handleManualCompile();
+        }
+    }, [updateLayer, handleManualCompile]);
+
     // --- Initial Load ---
     useEffect(() => {
         handleLoadPreset('ALIEN_SIGNAL');
@@ -60,27 +79,43 @@ const App: React.FC = () => {
 
     return (
         <Layout>
-            {/* 1. VISUALIZER LAYER (SWITCHABLE) */}
-            <div className="absolute inset-0 z-0">
-                <ErrorBoundary>
-                    {currentRenderer === 'PARTICLE' ? (
+            {/* 0. 背景层 */}
+            <div className="absolute inset-0 z-0 bg-[#050505]" />
+
+            {/* 1. VISUALIZER LAYERS (可叠加显示) */}
+            {/* 粒子层 - 作为背景 */}
+            {showParticle && particleFormula && (
+                <div className="absolute inset-0 z-[1]">
+                    <ErrorBoundary>
                         <GenerativeVisualizer
                             isRunning={isRunning}
                             speed={speed}
                             formula={particleFormula}
                         />
-                    ) : (
+                    </ErrorBoundary>
+                </div>
+            )}
+            {/* FFT 层 - 作为前景 (叠加时透明) */}
+            {showFourier && processedLayers.length > 0 && (
+                <div className="absolute inset-0 z-[2]">
+                    <ErrorBoundary>
                         <EpicycleVisualizer
                             layers={processedLayers}
                             isRunning={isRunning}
                             speedMultiplier={speed}
+                            transparent={showParticle}
                         />
-                    )}
-                </ErrorBoundary>
-            </div>
+                    </ErrorBoundary>
+                </div>
+            )}
 
-            {/* 2. UI: Top Bar */}
-            <TopBar onLoadPreset={handleLoadPreset} />
+            {/* 2. UI: Top Section (CommandBar + PresetPanel) */}
+            <TopSection
+                onLoadPreset={handleLoadPreset}
+                onSubmitFunction={handleFunctionInput}
+                onSubmitAI={handleAIProcess}
+                onOpenSettings={() => setInspectorOpen(true)}
+            />
 
             {/* 3. UI: Bottom Bar */}
             <BottomBar />

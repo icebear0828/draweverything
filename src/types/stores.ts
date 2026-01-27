@@ -58,6 +58,9 @@ export interface ConfigState {
   currentPresetKey: string;
   currentRenderer: 'FOURIER' | 'PARTICLE';
   particleFormula: ParticleFormula | undefined;
+  // 图层可见性开关 (支持同时显示)
+  showParticle: boolean;
+  showFourier: boolean;
 }
 
 export interface ConfigActions {
@@ -67,6 +70,11 @@ export interface ConfigActions {
   setPresetKey: (key: string) => void;
   setRenderer: (renderer: 'FOURIER' | 'PARTICLE') => void;
   setParticleFormula: (formula: ParticleFormula | undefined) => void;
+  // 图层可见性控制
+  setShowParticle: (show: boolean) => void;
+  setShowFourier: (show: boolean) => void;
+  toggleParticle: () => void;
+  toggleFourier: () => void;
   applyPresetConfig: (presetKey: string) => {
     tMin: number;
     tMax: number;

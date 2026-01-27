@@ -1,10 +1,21 @@
 
-import { PresetDef } from '../types';
+import { PresetDef, CategoryMeta } from '../types';
+
+/**
+ * 预设分类元数据
+ */
+export const PRESET_CATEGORIES: CategoryMeta[] = [
+  { id: 'particle', label: '粒子效果', icon: '✦', description: '基于公式的动态粒子系统' },
+  { id: 'fourier', label: 'FFT 绘图', icon: '○', description: '傅里叶变换圆周运动' },
+  { id: 'hybrid', label: '混合效果', icon: '⚡', description: '粒子 + FFT 叠加' },
+];
 
 export const PRESETS: Record<string, PresetDef> = {
-  // --- SPECIAL: FORMULA F(n,t) ---
+  // --- PARTICLE PRESETS ---
   ALIEN_SIGNAL: {
-    label: '数学: 螺旋星系 (生成艺术)',
+    label: '螺旋星系',
+    category: 'particle',
+    thumbnail: '🌀',
     renderer: 'PARTICLE',
     tMin: 0,
     tMax: 60,
@@ -27,9 +38,10 @@ export const PRESETS: Record<string, PresetDef> = {
     }
   },
 
-  // --- NEW: More Particle Presets ---
   COSMIC_VORTEX: {
-    label: '数学: 宇宙漩涡 (生成艺术)',
+    label: '宇宙漩涡',
+    category: 'particle',
+    thumbnail: '🌊',
     renderer: 'PARTICLE',
     tMin: 0,
     tMax: 60,
@@ -47,7 +59,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   QUANTUM_FIELD: {
-    label: '创意: 量子噪声场 (流体)',
+    label: '量子噪声场',
+    category: 'particle',
+    thumbnail: '⚛️',
     renderer: 'PARTICLE',
     tMin: 0,
     tMax: 60,
@@ -72,9 +86,11 @@ export const PRESETS: Record<string, PresetDef> = {
     }
   },
 
-  // --- MASTERPIECES ---
+  // --- FOURIER PRESETS ---
   QUANTUM_CHRONOMETER: {
-    label: '杰作: 量子天文钟',
+    label: '量子天文钟',
+    category: 'fourier',
+    thumbnail: '⏰',
     tMin: 0,
     tMax: 12 * Math.PI,
     scale: 15,
@@ -118,7 +134,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   ROYAL_MANDALA: {
-    label: '艺术: 皇家曼陀罗',
+    label: '皇家曼陀罗',
+    category: 'fourier',
+    thumbnail: '🔮',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 18,
@@ -158,7 +176,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   COSMIC_GEARS: {
-    label: '艺术: 宇宙齿轮',
+    label: '宇宙齿轮',
+    category: 'fourier',
+    thumbnail: '⚙️',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 12,
@@ -192,7 +212,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   BASIC_CIRCLE: {
-    label: '基础: 完美圆形',
+    label: '完美圆形',
+    category: 'fourier',
+    thumbnail: '⭕',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 150,
@@ -207,7 +229,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   BASIC_HEART: {
-    label: '基础: 数学之心',
+    label: '数学之心',
+    category: 'fourier',
+    thumbnail: '❤️',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 12,
@@ -223,7 +247,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   BASIC_INFINITY: {
-    label: '基础: 无限符号',
+    label: '无限符号',
+    category: 'fourier',
+    thumbnail: '♾️',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 100,
@@ -238,7 +264,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   BASIC_STAR: {
-    label: '基础: 极地之星',
+    label: '极地之星',
+    category: 'fourier',
+    thumbnail: '⭐',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 15,
@@ -254,7 +282,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   BASIC_BLOB: {
-    label: '基础: 有机体',
+    label: '有机体',
+    category: 'fourier',
+    thumbnail: '🫧',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 15,
@@ -270,7 +300,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   NEON_HOMESTEAD: {
-    label: '场景: 赛博小屋',
+    label: '赛博小屋',
+    category: 'fourier',
+    thumbnail: '🏠',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 18,
@@ -289,7 +321,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   HYPERCUBE_PROJECTION: {
-    label: '数学: 四维超正方体投影',
+    label: '四维超立方体',
+    category: 'fourier',
+    thumbnail: '🧊',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 40,
@@ -312,7 +346,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   EPICYCLE_CHAOS: {
-    label: '数学: 三体混沌',
+    label: '三体混沌',
+    category: 'fourier',
+    thumbnail: '🌐',
     tMin: 0,
     tMax: 2 * Math.PI,
     scale: 40,
@@ -327,7 +363,9 @@ export const PRESETS: Record<string, PresetDef> = {
   },
 
   PHOENIX_ASCENSION: {
-    label: '艺术: 凤凰涅槃',
+    label: '凤凰涅槃',
+    category: 'fourier',
+    thumbnail: '🔥',
     tMin: 0,
     tMax: 12 * Math.PI,
     scale: 35,
@@ -346,5 +384,70 @@ export const PRESETS: Record<string, PresetDef> = {
         lineWidth: 2
       }
     ]
+  },
+
+  // --- HYBRID PRESETS (粒子 + FFT 叠加) ---
+  COSMIC_HEART: {
+    label: '星际之心',
+    category: 'hybrid',
+    thumbnail: '💫',
+    tMin: 0,
+    tMax: 2 * Math.PI,
+    scale: 12,
+    // FFT 层: 心形
+    layers: [
+      {
+        xFn: '16 * Math.pow(Math.sin(t), 3)',
+        yFn: '13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)',
+        colorHex: '#f43f5e',
+        fillColor: '#881337',
+        lineWidth: 2.5
+      }
+    ],
+    // 粒子层: 星尘背景
+    particle: {
+      radiusFn: 'Math.pow(n, 1.5) / (n + 800)',
+      thetaFn: '0.08 * n * t',
+      radiusModFn: '1 + 0.2 * Math.sin(0.05 * n * Math.sin(200 * t))',
+      alphaFn: '0.2 + 0.5 * Math.abs(Math.sin(0.08 * n * Math.sin(200 * t)))',
+      particleCount: 3000,
+      colorHex: '#fda4af',
+      timeScale: 0.0003
+    }
+  },
+
+  NEBULA_MANDALA: {
+    label: '星云曼陀罗',
+    category: 'hybrid',
+    thumbnail: '🌌',
+    tMin: 0,
+    tMax: 2 * Math.PI,
+    scale: 18,
+    // FFT 层: 曼陀罗
+    layers: [
+      {
+        xFn: '16 * Math.cos(t) - 4 * Math.cos(6*t)',
+        yFn: '16 * Math.sin(t) - 4 * Math.sin(6*t)',
+        colorHex: '#8b5cf6',
+        fillColor: '#2e1065',
+        lineWidth: 2
+      },
+      {
+        xFn: '10 * Math.cos(3*t) * Math.cos(t)',
+        yFn: '10 * Math.cos(3*t) * Math.sin(t)',
+        colorHex: '#06b6d4',
+        lineWidth: 1.5
+      }
+    ],
+    // 粒子层: 星云
+    particle: {
+      radiusFn: '60 + 30 * Math.sin(n * 0.1)',
+      thetaFn: 'n * 0.05 + t',
+      radiusModFn: '1 + 0.3 * Math.sin(t * 3 + n * 0.1)',
+      alphaFn: '0.15 + 0.3 * Math.sin(t * 2 + n * 0.05)',
+      particleCount: 2000,
+      colorHex: '#c4b5fd',
+      timeScale: 0.0005
+    }
   }
 };

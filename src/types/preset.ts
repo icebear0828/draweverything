@@ -6,6 +6,21 @@
 import { MathLayer } from './layer';
 
 /**
+ * 预设分类
+ */
+export type PresetCategory = 'particle' | 'fourier' | 'hybrid';
+
+/**
+ * 分类元数据
+ */
+export interface CategoryMeta {
+  id: PresetCategory;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+/**
  * 粒子系统公式配置
  */
 export interface ParticleFormula {
@@ -31,6 +46,10 @@ export interface ParticleFormula {
  */
 export interface PresetDef {
   label: string;
+  /** 预设分类 */
+  category?: PresetCategory;
+  /** 缩略图描述（用于 UI 显示） */
+  thumbnail?: string;
   xFn?: string;
   yFn?: string;
   layers?: MathLayer[];
