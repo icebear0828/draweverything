@@ -71,8 +71,8 @@ export const PRESETS: Record<string, PresetDef> = {
       // r: 粒子分布在圆环带上，加上噪声抖动
       radiusFn: '80 + 40 * Math.sin(n) + 20 * Math.sin(t * 10 + n)',
 
-      // theta: 均匀分布 + 轻微湍流 (0.001047 ≈ 2π/6000)
-      thetaFn: 't + n * 0.001047 + 0.1 * Math.sin(t * 2 + n * 0.01)',
+      // theta: 均匀分布 + 旋转 (0.001047 ≈ 2π/6000，湍流效果由 radius 提供)
+      thetaFn: 't + n * 0.001047',
 
       // 调制: 快速闪烁模拟能量涨落
       radiusModFn: '1 + 0.2 * Math.sin(t * 20 + n)',
