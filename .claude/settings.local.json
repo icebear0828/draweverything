@@ -28,7 +28,10 @@
       "Bash(npm --version:*)",
       "Bash(where:*)",
       "Bash(cmd /c \"cd /d D:\\\\rag\\\\draweverything && npm install\")",
-      "Bash(npm.cmd run lint:*)"
+      "Bash(npm.cmd run lint:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

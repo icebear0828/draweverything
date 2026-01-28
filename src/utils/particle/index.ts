@@ -25,28 +25,11 @@ import type { ParticleExpressionSystem } from '../../types/particle';
 
 /**
  * Calculate optimal particle count based on device performance
+ * Currently disabled to ensure full circle coverage for theta-based formulas
  */
 export function getOptimalParticleCount(baseCount: number = 4000): number {
-    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-        return baseCount;
-    }
-
-    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-    );
-    const cores = navigator.hardwareConcurrency || 4;
-    const isLowEnd = cores <= 4;
-    const isHighDPI = window.devicePixelRatio > 2;
-
-    if (isMobile && isLowEnd) {
-        return Math.floor(baseCount * 0.25);
-    }
-    if (isMobile) {
-        return Math.floor(baseCount * 0.5);
-    }
-    if (isLowEnd || isHighDPI) {
-        return Math.floor(baseCount * 0.625);
-    }
+    // Disabled: particle reduction breaks theta coverage for circular effects
+    // TODO: Consider dynamic theta coefficient adjustment instead
     return baseCount;
 }
 
