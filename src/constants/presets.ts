@@ -68,12 +68,11 @@ export const PRESETS: Record<string, PresetDef> = {
     scale: 200,
     layers: [],
     particle: {
-      // 利用 Math.random 的伪随机性 (hash)
-      // r: 粒子分布在圆环带上，加上强烈的噪声抖动
+      // r: 粒子分布在圆环带上，加上噪声抖动
       radiusFn: '80 + 40 * Math.sin(n) + 20 * Math.sin(t * 10 + n)',
 
-      // theta: 并非线性旋转，而是基于位置的湍流
-      thetaFn: 't + n * 0.001 + 0.5 * Math.sin(t * 2 + n * 0.01)',
+      // theta: 均匀分布 + 轻微湍流 (0.001047 ≈ 2π/6000)
+      thetaFn: 't + n * 0.001047 + 0.1 * Math.sin(t * 2 + n * 0.01)',
 
       // 调制: 快速闪烁模拟能量涨落
       radiusModFn: '1 + 0.2 * Math.sin(t * 20 + n)',
