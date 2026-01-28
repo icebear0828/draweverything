@@ -1,5 +1,6 @@
 import { ParticleFormula } from '../types';
 import { safeCompileExpression } from './safeEval';
+import { sanitizeColor } from './colorUtils';
 
 /**
  * Compiled particle formula with executable functions
@@ -77,9 +78,14 @@ function compileFormula<T extends (...args: number[]) => number>(
 
 /**
  * Compile a ParticleFormula configuration into executable functions
+ * Automatically adjusts particle count based on device performance
  */
 export function compileParticleFormula(formula?: ParticleFormula): CompiledParticleFormula {
     const f = formula ?? DEFAULT_PARTICLE_FORMULA;
+
+    // Apply device-aware particle count optimization
+    const baseCount = f.particleCount ?? 4000;
+    const optimizedCount = getOptimalParticleCount(baseCount);
 
     return {
         radiusFn: compileFormula(
@@ -106,8 +112,8 @@ export function compileParticleFormula(formula?: ParticleFormula): CompiledParti
             (_n: number, _t: number, _rMod: number) => 1
         ),
 
-        particleCount: f.particleCount ?? 4000,
-        colorHex: f.colorHex ?? '#ffffff',
+        particleCount: optimizedCount,
+        colorHex: sanitizeColor(f.colorHex, '#ffffff'),
         timeScale: f.timeScale ?? 0.0002
     };
 }

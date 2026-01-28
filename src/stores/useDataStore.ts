@@ -41,6 +41,8 @@ interface DataActions {
   resetError: () => void;
 
   // 高层操作 (委托给 Service)
+  // Note: These operations coordinate with other stores. Prefer using AppCommands for
+  // explicit cross-store orchestration in new code.
   compileFunctions: (tMin: number, tMax: number, scale: number, points: number) => Promise<void>;
   loadPreset: (key: string) => Promise<void>;
   processImage: (file: File, pointCount: number) => Promise<void>;
@@ -70,9 +72,13 @@ export const useDataStore = create<DataStore>()(
     resetError: () => set({ error: null }),
 
     // 高层操作 - 委托给 DataProcessor Service
+    // Note: 这些方法需要访问其他 Store 的数据。为保持向后兼容，
+    // 它们内部会调用 useLayerStore.getState()。
+    // 新代码应优先使用 AppCommands 进行跨 Store 编排。
     compileFunctions: async (tMin, tMax, scale, points) => {
       set({ loading: true, error: null });
       try {
+        // 读取当前图层配置（跨 Store 访问）
         const { layersConfig } = useLayerStore.getState();
         const result = await compileAndProcess(layersConfig, { tMin, tMax, scale, points });
         set({

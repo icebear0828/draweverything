@@ -33,7 +33,7 @@ export const compileAndProcess = async (
 ): Promise<ProcessResult> => {
   const { tMin, tMax, scale, points } = config;
 
-  const pathsData: Complex[][] = layersConfig.map((layer) => {
+  const pathsData: Complex[][] = layersConfig.map((layer, index) => {
     const s = layer.scaleMod ? scale * layer.scaleMod : scale;
     const data = generateFromFunction(
       layer.xFn,
@@ -46,7 +46,8 @@ export const compileAndProcess = async (
       layer.isPolar
     );
     if (data.length === 0) {
-      throw new Error('Layer produced empty path. Check syntax.');
+      const layerInfo = `Layer ${index + 1}: x(t)="${layer.xFn}", y(t)="${layer.yFn}"`;
+      throw new Error(`Empty path generated. ${layerInfo}. Check function syntax.`);
     }
     return data;
   });

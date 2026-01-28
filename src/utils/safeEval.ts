@@ -7,7 +7,7 @@
  * - 预处理 Math.* 语法以保持向后兼容
  */
 
-import { compile, parse, MathNode, SymbolNode, FunctionNode } from 'mathjs';
+import { compile, parse, MathNode, SymbolNode, FunctionNode, EvalFunction } from 'mathjs';
 import { EXPRESSION_MAX_LENGTH } from '../constants/config';
 
 // ============================================
@@ -17,6 +17,44 @@ import { EXPRESSION_MAX_LENGTH } from '../constants/config';
 interface ValidationResult {
   valid: boolean;
   error?: string;
+}
+
+// ============================================
+// Compilation Cache
+// ============================================
+
+/**
+ * Simple cache for compiled expressions
+ * Uses FIFO eviction for O(1) performance
+ */
+const CACHE_MAX_SIZE = 100;
+
+const compilationCache = new Map<string, EvalFunction>();
+const cacheKeys: string[] = []; // Track insertion order for FIFO
+
+/**
+ * Get or compile an expression with caching
+ */
+function getCachedCompilation(processed: string): EvalFunction {
+  const existing = compilationCache.get(processed);
+  if (existing) {
+    return existing;
+  }
+
+  // Compile new expression
+  const compiled = compile(processed);
+
+  // FIFO eviction if cache is full (O(1))
+  if (compilationCache.size >= CACHE_MAX_SIZE) {
+    const oldestKey = cacheKeys.shift();
+    if (oldestKey) {
+      compilationCache.delete(oldestKey);
+    }
+  }
+
+  compilationCache.set(processed, compiled);
+  cacheKeys.push(processed);
+  return compiled;
 }
 
 // ============================================
@@ -65,17 +103,18 @@ const ALLOWED_FUNCTIONS = new Set([
  */
 function preprocessExpression(expr: string): string {
   return expr
-    // 常量转换
-    .replace(/Math\.PI/g, 'pi')
-    .replace(/Math\.E/g, 'e')
-    .replace(/Math\.LN2/g, 'log(2)')
-    .replace(/Math\.LN10/g, 'log(10)')
-    .replace(/Math\.LOG2E/g, '(1/log(2))')
-    .replace(/Math\.LOG10E/g, '(1/log(10))')
-    .replace(/Math\.SQRT2/g, 'sqrt(2)')
-    .replace(/Math\.SQRT1_2/g, 'sqrt(0.5)')
-    // 函数调用转换 - 移除 Math. 前缀
-    .replace(/Math\.([a-zA-Z]+)/g, '$1');
+    // 常量转换 - 使用 word boundary 确保精确匹配
+    .replace(/\bMath\.PI\b/g, 'pi')
+    .replace(/\bMath\.E\b/g, 'e')
+    .replace(/\bMath\.LN2\b/g, 'log(2)')
+    .replace(/\bMath\.LN10\b/g, 'log(10)')
+    .replace(/\bMath\.LOG2E\b/g, '(1/log(2))')
+    .replace(/\bMath\.LOG10E\b/g, '(1/log(10))')
+    .replace(/\bMath\.SQRT2\b/g, 'sqrt(2)')
+    .replace(/\bMath\.SQRT1_2\b/g, 'sqrt(0.5)')
+    // 函数调用转换 - 仅匹配独立的 Math. 前缀
+    // 使用 word boundary 避免误匹配 MyMath.sin 等
+    .replace(/\bMath\.([a-zA-Z]+)\b/g, '$1');
 }
 
 // ============================================
@@ -307,9 +346,9 @@ export function safeCompileExpression<T extends (...args: number[]) => number>(
   }
 
   try {
-    // 预处理并编译
+    // 预处理并编译（使用缓存）
     const processed = preprocessExpression(expr);
-    const compiled = compile(processed);
+    const compiled = getCachedCompilation(processed);
 
     // 创建包装函数
     const fn = (...args: number[]): number => {
@@ -331,10 +370,10 @@ export function safeCompileExpression<T extends (...args: number[]) => number>(
       }
     };
 
-    // 测试函数是否正常工作
+    // 快速测试：只用一个常规值测试
+    // (t=0 可能对某些公式是奇异点，跳过)
     const testArgs = argNames.map(() => 1);
     const result = fn(...testArgs);
-
     if (typeof result !== 'number' || !isFinite(result)) {
       console.warn(`Expression "${expr}" returned invalid result: ${result}`);
       return fallback;
@@ -367,8 +406,9 @@ export function safeCompileExpressionWithVars<
   }
 
   try {
+    // 使用缓存的编译结果
     const processed = preprocessExpression(expr);
-    const compiled = compile(processed);
+    const compiled = getCachedCompilation(processed);
 
     const fn = (...args: unknown[]): number => {
       const scope: Record<string, unknown> = {};

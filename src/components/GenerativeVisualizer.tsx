@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useMemo, type FC } from 'react';
+import { useEffect, useRef, useMemo, useState, type FC } from 'react';
 import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { ParticleFormula } from '../types';
 import { compileParticleFormula, CompiledParticleFormula } from '../utils/particleCompiler';
@@ -21,6 +21,9 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
     const timeRef = useRef(0);
     const animationFrameRef = useRef(0);
 
+    // Track canvas context availability
+    const [contextError, setContextError] = useState(false);
+
     // Compile formula once when it changes
     const compiledFormula = useMemo<CompiledParticleFormula>(() => {
         return compileParticleFormula(formula);
@@ -39,13 +42,23 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
-        setupWheelHandler
+        handleDoubleClick,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
+        setupWheelHandler,
+        setupKeyboardHandler
     } = useSharedCanvasControls();
 
     // Setup wheel handler for canvas
     useEffect(() => {
         return setupWheelHandler(canvasRef.current);
     }, [setupWheelHandler]);
+
+    // Setup keyboard shortcuts
+    useEffect(() => {
+        return setupKeyboardHandler();
+    }, [setupKeyboardHandler]);
 
     // Resize Observer
     useEffect(() => {
@@ -73,7 +86,12 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) return;
+        if (!ctx) {
+            setContextError(true);
+            console.error('Failed to get 2D canvas context');
+            return;
+        }
+        setContextError(false);
 
         const render = () => {
             const width = canvas.width;
@@ -96,6 +114,7 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
             const t = timeRef.current;
 
             // Use compiled formulas
+            // Start from n=1 (n=0 typically produces r=0 for most formulas)
             for (let n = 1; n < f.particleCount; n++) {
                 const rBase = f.radiusFn(n, t);
                 const rMod = f.radiusModFn(n, t);
@@ -120,6 +139,11 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
 
             if (isRunning) {
                 timeRef.current += f.timeScale * speed;
+                // 防止浮点数精度溢出：在安全范围内循环
+                // 使用 1e6 作为周期，足够大以保持动画连续性
+                if (timeRef.current > 1e6) {
+                    timeRef.current -= 1e6;
+                }
             }
 
             animationFrameRef.current = requestAnimationFrame(render);
@@ -137,8 +161,27 @@ const GenerativeVisualizer: FC<GenerativeVisualizerProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDoubleClick={handleDoubleClick}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
         >
             <canvas ref={canvasRef} className="block w-full h-full touch-none" />
+
+            {/* Context Error Overlay */}
+            {contextError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                    <div className="text-center p-6">
+                        <div className="text-red-400 text-lg font-mono mb-2">Canvas Error</div>
+                        <div className="text-zinc-400 text-sm">
+                            Failed to initialize graphics context.
+                            <br />
+                            Try refreshing the page or using a different browser.
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* HUD */}
             <div className="absolute bottom-6 left-6 pointer-events-none select-none z-10 opacity-70">

@@ -11,7 +11,7 @@ import {
     CompiledParticleSystem,
     ParticlePreset
 } from '../types/particle';
-import { compileParticleExpressionSystem, executeParticle } from '../utils/particle';
+import { compileParticleExpressionSystem } from '../utils/particle';
 
 interface MultiSystemParticleRendererProps {
     /** Single system or full preset with multiple systems */
@@ -89,6 +89,10 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
+        handleDoubleClick,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
         setupWheelHandler
     } = useCanvasControls();
 
@@ -125,6 +129,9 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
         const ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
 
+        // Pre-allocate reusable objects to avoid GC pressure
+        const vars: Record<string, number> = {};
+
         const render = () => {
             const width = canvas.width;
             const height = canvas.height;
@@ -155,23 +162,33 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
             // Render each system
             for (const compiledSystem of systems) {
                 const particleCount = compiledSystem.particleCount;
+                const colorHex = compiledSystem.colorHex;
+                const variables = compiledSystem.variables;
+                const output = compiledSystem.output;
+                const hasColorFn = output.color !== null;
 
-                for (let n = 1; n < particleCount; n++) {
-                    try {
-                        const particle = executeParticle(compiledSystem, n, t);
-
-                        // Set color and alpha
-                        ctx.fillStyle = particle.color;
-                        ctx.globalAlpha = Math.max(0, Math.min(1, particle.alpha));
-
-                        const size = (particle.size * 0.8) / currentZoom;
-
-                        ctx.beginPath();
-                        ctx.arc(particle.x, particle.y, Math.max(0.5, size), 0, 2 * Math.PI);
-                        ctx.fill();
-                    } catch {
-                        // Skip particles that error (shouldn't happen with proper validation)
+                for (let n = 0; n < particleCount; n++) {
+                    // Compute variables in order (reuse vars object)
+                    for (const variable of variables) {
+                        vars[variable.name] = variable.fn(n, t, vars);
                     }
+
+                    // Compute outputs directly
+                    const x = output.x(n, t, vars);
+                    const y = output.y(n, t, vars);
+                    const alpha = output.alpha(n, t, vars);
+                    const size = output.size(n, t, vars);
+                    const color = hasColorFn ? output.color!(n, t, vars) : colorHex;
+
+                    // Set color and alpha
+                    ctx.fillStyle = color;
+                    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+                    const finalSize = (size * 0.8) / currentZoom;
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.max(0.5, finalSize), 0, 2 * Math.PI);
+                    ctx.fill();
                 }
             }
 
@@ -202,6 +219,11 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDoubleClick={handleDoubleClick}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
         >
             <canvas ref={canvasRef} className="block w-full h-full touch-none" />
 

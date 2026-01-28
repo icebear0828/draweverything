@@ -20,12 +20,25 @@ interface CanvasActions {
   adjustZoom: (delta: number) => void;
   adjustPan: (dx: number, dy: number) => void;
   reset: () => void;
+  resetPan: () => void;
+  isOutOfBounds: () => boolean;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 50;
+
+// Pan limits - prevent users from losing the canvas
+// These are in pixels, relative to the viewport center
+const MAX_PAN = 2000;
+
+/**
+ * Clamp pan value within bounds
+ */
+const clampPan = (value: number): number => {
+  return Math.min(Math.max(value, -MAX_PAN), MAX_PAN);
+};
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   // State
@@ -38,18 +51,38 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set({ zoom: clamped });
   },
 
-  setPan: (pan) => set({ pan }),
+  setPan: (pan) => set({
+    pan: {
+      x: clampPan(pan.x),
+      y: clampPan(pan.y),
+    }
+  }),
 
   adjustZoom: (delta) => {
     const { zoom } = get();
-    const newZoom = Math.min(Math.max(zoom + delta * zoom * 5, MIN_ZOOM), MAX_ZOOM);
+    // Use logarithmic scaling for smoother zoom at extreme levels
+    const factor = 1 + delta * 5;
+    const newZoom = Math.min(Math.max(zoom * factor, MIN_ZOOM), MAX_ZOOM);
     set({ zoom: newZoom });
   },
 
   adjustPan: (dx, dy) => {
     const { pan } = get();
-    set({ pan: { x: pan.x + dx, y: pan.y + dy } });
+    set({
+      pan: {
+        x: clampPan(pan.x + dx),
+        y: clampPan(pan.y + dy),
+      }
+    });
   },
 
   reset: () => set({ zoom: 1, pan: { x: 0, y: 0 } }),
+
+  resetPan: () => set({ pan: { x: 0, y: 0 } }),
+
+  isOutOfBounds: () => {
+    const { pan } = get();
+    const threshold = MAX_PAN * 0.8; // Warn at 80% of limit
+    return Math.abs(pan.x) > threshold || Math.abs(pan.y) > threshold;
+  },
 }));

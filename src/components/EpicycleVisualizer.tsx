@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useMemo, type FC } from 'react';
+import { useEffect, useRef, useMemo, useState, type FC } from 'react';
 import { ProcessedLayer, FourierCoefficient } from '../types';
 import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import { drawArrow, drawBackground } from '../utils/canvas';
@@ -43,13 +43,14 @@ const pushToBuffer = (cb: CircularBuffer, point: { x: number, y: number }) => {
   }
 };
 
-// Helper to iterate circular buffer from newest to oldest
-const iterateBuffer = (cb: CircularBuffer, callback: (point: { x: number, y: number }, index: number) => void) => {
-  for (let i = 0; i < cb.count; i++) {
-    // Start from (head - 1) and go backwards (newest first)
-    const idx = (cb.head - 1 - i + PATH_HISTORY_MAX_POINTS) % PATH_HISTORY_MAX_POINTS;
-    callback(cb.buffer[idx], i);
-  }
+// Helper to get starting index for iteration (newest point)
+const getBufferStartIndex = (cb: CircularBuffer): number => {
+  return (cb.head - 1 + PATH_HISTORY_MAX_POINTS) % PATH_HISTORY_MAX_POINTS;
+};
+
+// Helper to iterate backwards through buffer (inline for performance)
+const getNextIndex = (idx: number): number => {
+  return idx === 0 ? PATH_HISTORY_MAX_POINTS - 1 : idx - 1;
 };
 
 interface EpicycleVisualizerProps {
@@ -69,6 +70,9 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Track canvas context availability
+  const [contextError, setContextError] = useState(false);
+
   // Refs for mutable state accessed in the animation loop
   const timeRef = useRef(0);
   const animationFrameRef = useRef<number>(0);
@@ -85,7 +89,12 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    setupWheelHandler
+    handleDoubleClick,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    setupWheelHandler,
+    setupKeyboardHandler
   } = useSharedCanvasControls();
 
   // Pre-compute primary indices for each layer (first non-zero frequency)
@@ -144,12 +153,22 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
     return setupWheelHandler(canvasRef.current);
   }, [setupWheelHandler]);
 
+  // Setup keyboard shortcuts
+  useEffect(() => {
+    return setupKeyboardHandler();
+  }, [setupKeyboardHandler]);
+
   // Animation Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) return;
+    if (!ctx) {
+      setContextError(true);
+      console.error('Failed to get 2D canvas context');
+      return;
+    }
+    setContextError(false);
 
     const render = () => {
       if (!canvas || !ctx) return;
@@ -247,30 +266,30 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
           // Update History (O(1) with circular buffer)
           pushToBuffer(layerState.pathHistory, { x, y });
 
-          // Draw Path
+          // Draw Path (directly from circular buffer to avoid GC)
           const historyCount = layerState.pathHistory.count;
           if (historyCount > 2) {
-            // Collect points from circular buffer for drawing
-            const points: { x: number, y: number }[] = [];
-            iterateBuffer(layerState.pathHistory, (point) => {
-              points.push(point);
-            });
+            const buf = layerState.pathHistory.buffer;
+            let idx = getBufferStartIndex(layerState.pathHistory);
 
-            // Fill (Optional)
+            // Fill (Optional) - sample every other point for performance
             if (layer.fillColor) {
               ctx.fillStyle = layer.fillColor;
               ctx.globalAlpha = 0.2;
               ctx.beginPath();
-              ctx.moveTo(points[0].x, points[0].y);
-              for (let i = 1; i < points.length; i += 2) {
-                ctx.lineTo(points[i].x, points[i].y);
+              ctx.moveTo(buf[idx].x, buf[idx].y);
+              let fillIdx = idx;
+              for (let i = 1; i < historyCount; i += 2) {
+                fillIdx = getNextIndex(fillIdx);
+                fillIdx = getNextIndex(fillIdx); // Skip one
+                ctx.lineTo(buf[fillIdx].x, buf[fillIdx].y);
               }
               ctx.closePath();
               ctx.fill();
               ctx.globalAlpha = 1.0;
             }
 
-            // Stroke
+            // Stroke - use simple decrement with wrap
             ctx.shadowBlur = 10;
             ctx.shadowColor = layer.color;
             ctx.strokeStyle = layer.color;
@@ -281,9 +300,10 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
             ctx.lineJoin = 'round';
 
             ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i].x, points[i].y);
+            ctx.moveTo(buf[idx].x, buf[idx].y);
+            for (let i = 1; i < historyCount; i++) {
+              idx = getNextIndex(idx);
+              ctx.lineTo(buf[idx].x, buf[idx].y);
             }
             ctx.stroke();
             ctx.shadowBlur = 0;
@@ -306,8 +326,9 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
       // Time Step
       if (isRunningRef.current) {
         timeRef.current += ANIMATION_TIME_STEP * speedRef.current;
-        if (timeRef.current > 2 * Math.PI) {
-          timeRef.current -= 2 * Math.PI;
+        // 使用模运算确保时间在 [0, 2π) 范围内，防止高速时跳过多个周期
+        if (timeRef.current >= 2 * Math.PI) {
+          timeRef.current = timeRef.current % (2 * Math.PI);
         }
       }
 
@@ -353,11 +374,30 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       <canvas
         ref={canvasRef}
         className="block w-full h-full touch-none"
       />
+
+      {/* Context Error Overlay */}
+      {contextError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+          <div className="text-center p-6">
+            <div className="text-red-400 text-lg font-mono mb-2">Canvas Error</div>
+            <div className="text-zinc-400 text-sm">
+              Failed to initialize graphics context.
+              <br />
+              Try refreshing the page or using a different browser.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* HUD - Bottom Left */}
       <div className="absolute bottom-6 left-6 pointer-events-none select-none z-10 flex flex-col gap-2 items-start opacity-70">

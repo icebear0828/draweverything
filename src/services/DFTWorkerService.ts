@@ -40,6 +40,7 @@ class DFTWorkerService {
     resolve: (layers: ProcessedLayer[]) => void;
     reject: (error: Error) => void;
     timeoutId: ReturnType<typeof setTimeout>;
+    cancelled: boolean;  // 标记请求是否已取消/超时
   }> = new Map();
   private requestCounter = 0;
 
@@ -69,15 +70,20 @@ class DFTWorkerService {
           const request = this.pendingRequests.get(payload.id);
           if (request) {
             clearTimeout(request.timeoutId);
-            const layers = payload.processedLayers.map(compileLayerData);
-            request.resolve(layers);
+            // 检查请求是否已被取消/超时，避免竞态条件
+            if (!request.cancelled) {
+              const layers = payload.processedLayers.map(compileLayerData);
+              request.resolve(layers);
+            }
             this.pendingRequests.delete(payload.id);
           }
         } else if (type === 'DFT_ERROR') {
           const request = this.pendingRequests.get(payload.id);
           if (request) {
             clearTimeout(request.timeoutId);
-            request.reject(new Error(payload.message));
+            if (!request.cancelled) {
+              request.reject(new Error(payload.message));
+            }
             this.pendingRequests.delete(payload.id);
           }
         }
@@ -88,7 +94,9 @@ class DFTWorkerService {
         console.error('DFT Worker error:', error);
         this.pendingRequests.forEach((request) => {
           clearTimeout(request.timeoutId);
-          request.reject(new Error('Worker error'));
+          if (!request.cancelled) {
+            request.reject(new Error('Worker error'));
+          }
         });
         this.pendingRequests.clear();
         this.worker = null;
@@ -108,7 +116,9 @@ class DFTWorkerService {
     if (this.worker) {
       this.pendingRequests.forEach((request) => {
         clearTimeout(request.timeoutId);
-        request.reject(new Error('Worker terminated'));
+        if (!request.cancelled) {
+          request.reject(new Error('Worker terminated'));
+        }
       });
       this.pendingRequests.clear();
       this.worker.terminate();
@@ -134,15 +144,21 @@ class DFTWorkerService {
       const id = this.generateRequestId();
 
       const timeoutId = setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.get(id)?.reject(
+        const request = this.pendingRequests.get(id);
+        if (request && !request.cancelled) {
+          // 标记为已取消，但保留在 map 中等待 Worker 响应后清理
+          request.cancelled = true;
+          request.reject(
             new Error(`DFT request timeout after ${REQUEST_TIMEOUT_MS}ms`)
           );
-          this.pendingRequests.delete(id);
+          // 设置延迟清理，防止 Worker 响应后找不到请求导致内存泄漏
+          setTimeout(() => {
+            this.pendingRequests.delete(id);
+          }, 5000);
         }
       }, REQUEST_TIMEOUT_MS);
 
-      this.pendingRequests.set(id, { resolve, reject, timeoutId });
+      this.pendingRequests.set(id, { resolve, reject, timeoutId, cancelled: false });
 
       const request: DFTRequest = {
         type: 'COMPUTE_DFT',
