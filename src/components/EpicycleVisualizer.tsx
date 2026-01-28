@@ -9,6 +9,7 @@ import {
   EPICYCLE_MIN_SCREEN_RADIUS,
   PEN_TIP_BASE_SIZE,
   ANIMATION_TIME_STEP,
+  ENGINE_THEME,
 } from '../constants/config';
 
 // Circular buffer for O(1) path history operations
@@ -369,7 +370,8 @@ const EpicycleVisualizer: FC<EpicycleVisualizerProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full relative overflow-hidden cursor-move active:cursor-grabbing ${transparent ? '' : 'bg-[#050505]'}`}
+      className="w-full h-full relative overflow-hidden cursor-move active:cursor-grabbing"
+      style={{ backgroundColor: transparent ? 'transparent' : ENGINE_THEME.background }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

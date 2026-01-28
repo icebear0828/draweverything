@@ -5,13 +5,14 @@
  */
 
 import { useEffect, useRef, useMemo, type FC } from 'react';
-import { useCanvasControls } from '../hooks/useCanvasControls';
+import { useSharedCanvasControls } from '../hooks/useSharedCanvasControls';
 import {
     ParticleExpressionSystem,
     CompiledParticleSystem,
     ParticlePreset
 } from '../types/particle';
 import { compileParticleExpressionSystem } from '../utils/particle';
+import { ENGINE_THEME } from '../constants/config';
 
 interface MultiSystemParticleRendererProps {
     /** Single system or full preset with multiple systems */
@@ -74,7 +75,7 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
 
     // Blend mode
     const blendMode = preset?.blendMode ?? 'normal';
-    const backgroundColor = preset?.backgroundColor ?? '#050505';
+    const backgroundColor = preset?.backgroundColor ?? ENGINE_THEME.background;
 
     // Keep ref for animation loop
     const systemsRef = useRef(compiledSystems);
@@ -94,7 +95,7 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
         handleTouchMove,
         handleTouchEnd,
         setupWheelHandler
-    } = useCanvasControls();
+    } = useSharedCanvasControls();
 
     // Setup wheel handler
     useEffect(() => {
@@ -167,6 +168,13 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
                 const output = compiledSystem.output;
                 const hasColorFn = output.color !== null;
 
+                // Optimization: set fillStyle once if color is static
+                if (!hasColorFn) {
+                    ctx.fillStyle = colorHex;
+                }
+
+                let lastColor = hasColorFn ? '' : colorHex;
+
                 for (let n = 0; n < particleCount; n++) {
                     // Compute variables in order (reuse vars object)
                     for (const variable of variables) {
@@ -178,10 +186,16 @@ const MultiSystemParticleRenderer: FC<MultiSystemParticleRendererProps> = ({
                     const y = output.y(n, t, vars);
                     const alpha = output.alpha(n, t, vars);
                     const size = output.size(n, t, vars);
-                    const color = hasColorFn ? output.color!(n, t, vars) : colorHex;
 
-                    // Set color and alpha
-                    ctx.fillStyle = color;
+                    // Set color only if dynamic and changed
+                    if (hasColorFn) {
+                        const color = output.color!(n, t, vars);
+                        if (color !== lastColor) {
+                            ctx.fillStyle = color;
+                            lastColor = color;
+                        }
+                    }
+
                     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
                     const finalSize = (size * 0.8) / currentZoom;

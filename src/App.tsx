@@ -1,8 +1,10 @@
 
-import { useEffect, useCallback, type FC } from 'react';
+import { useEffect, useCallback, useMemo, type FC } from 'react';
 import EpicycleVisualizer from './components/EpicycleVisualizer';
-import GenerativeVisualizer from './components/GenerativeVisualizer';
+import MultiSystemParticleRenderer from './components/MultiSystemParticleRenderer';
 import ControlPanel from './components/ControlPanel';
+import { convertLegacyFormula } from './utils/particle';
+import { ENGINE_THEME } from './constants/config';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout, { BottomBar, Overlays } from './components/Layout';
 import TopSection from './components/TopSection';
@@ -56,6 +58,12 @@ const App: FC = () => {
         handleSampleProcess,
     } = useAppHandlers();
 
+    // Convert legacy particle formula to new expression system
+    const particleSystem = useMemo(() => {
+        if (!particleFormula) return undefined;
+        return convertLegacyFormula(particleFormula);
+    }, [particleFormula]);
+
     // 处理函数输入
     const handleFunctionInput = useCallback((input: string) => {
         const parsed = parseFunctionInput(input);
@@ -80,17 +88,17 @@ const App: FC = () => {
     return (
         <Layout>
             {/* 0. 背景层 */}
-            <div className="absolute inset-0 z-0 bg-[#050505]" />
+            <div className="absolute inset-0 z-0" style={{ backgroundColor: ENGINE_THEME.background }} />
 
             {/* 1. VISUALIZER LAYERS (可叠加显示) */}
             {/* 粒子层 - 作为背景 */}
-            {showParticle && particleFormula && (
+            {showParticle && particleSystem && (
                 <div className="absolute inset-0 z-[1]">
                     <ErrorBoundary>
-                        <GenerativeVisualizer
+                        <MultiSystemParticleRenderer
                             isRunning={isRunning}
                             speed={speed}
-                            formula={particleFormula}
+                            system={particleSystem}
                         />
                     </ErrorBoundary>
                 </div>

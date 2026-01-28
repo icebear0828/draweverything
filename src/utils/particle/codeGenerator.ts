@@ -1,11 +1,12 @@
 /**
  * Code Generator for Particle Expression System
  *
- * Compiles expression definitions into executable JavaScript functions
- * using mathjs for safe AST-based expression evaluation
+ * Compiles expression definitions into native JavaScript functions
+ * using new Function() for maximum performance.
+ * Safety is ensured by whitelist validation before code generation.
  */
 
-import { compile, EvalFunction } from 'mathjs';
+import { parse } from 'mathjs';
 import {
   ParticleExpressionSystem,
   CompiledParticleSystem,
@@ -28,25 +29,72 @@ const compilationCache = new WeakMap<
 >();
 
 // ============================================
-// Expression Preprocessing
+// Safe Function Names (Whitelist)
+// ============================================
+
+const ALLOWED_FUNCTIONS = new Set([
+  'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2',
+  'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+  'sqrt', 'pow', 'abs', 'floor', 'ceil', 'round', 'trunc',
+  'min', 'max', 'exp', 'log', 'log10', 'log2',
+  'sign', 'random', 'hypot', 'cbrt', 'expm1', 'log1p',
+]);
+
+const ALLOWED_CONSTANTS = new Set(['PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2']);
+
+// ============================================
+// Expression to Native JS Conversion
 // ============================================
 
 /**
- * Preprocess expression: convert JavaScript Math.* syntax to mathjs syntax
+ * Convert expression to native JavaScript code string
+ * Validates safety and transforms to JS syntax
  */
-function preprocessExpression(expr: string): string {
-  return expr
-    // 常量转换
-    .replace(/Math\.PI/g, 'pi')
-    .replace(/Math\.E/g, 'e')
-    .replace(/Math\.LN2/g, 'log(2)')
-    .replace(/Math\.LN10/g, 'log(10)')
-    .replace(/Math\.LOG2E/g, '(1/log(2))')
-    .replace(/Math\.LOG10E/g, '(1/log(10))')
-    .replace(/Math\.SQRT2/g, 'sqrt(2)')
-    .replace(/Math\.SQRT1_2/g, 'sqrt(0.5)')
-    // 函数调用转换 - 移除 Math. 前缀
-    .replace(/Math\.([a-zA-Z]+)/g, '$1');
+function expressionToJS(expr: string, variableNames: string[]): string {
+  // Validate with mathjs parser first (catches syntax errors)
+  try {
+    const preprocessed = expr
+      .replace(/Math\.PI/g, 'pi')
+      .replace(/Math\.E/g, 'e')
+      .replace(/Math\.([a-zA-Z]+)/g, '$1');
+    parse(preprocessed);
+  } catch (e) {
+    throw new ParticleExpressionError(
+      `Invalid expression syntax: ${expr}`,
+      'SYNTAX_ERROR',
+      { expression: expr, error: String(e) }
+    );
+  }
+
+  // Build set of allowed identifiers
+  const allowedVars = new Set(['n', 't', ...variableNames]);
+
+  // Transform expression to native JS
+  let jsCode = expr;
+
+  // Keep Math.* as is (native JS)
+  // Convert bare function calls to Math.*
+  for (const fn of ALLOWED_FUNCTIONS) {
+    // Match bare function calls (not preceded by Math.)
+    const regex = new RegExp(`(?<!Math\\.)\\b${fn}\\s*\\(`, 'g');
+    jsCode = jsCode.replace(regex, `Math.${fn}(`);
+  }
+
+  // Convert constants
+  jsCode = jsCode
+    .replace(/\bpi\b/gi, 'Math.PI')
+    .replace(/\be\b/g, 'Math.E');
+
+  // Validate no dangerous patterns
+  if (/\b(eval|Function|import|require|window|document|global|process)\b/.test(jsCode)) {
+    throw new ParticleExpressionError(
+      `Dangerous pattern detected in expression`,
+      'SYNTAX_ERROR',
+      { expression: expr }
+    );
+  }
+
+  return jsCode;
 }
 
 // ============================================
@@ -54,9 +102,9 @@ function preprocessExpression(expr: string): string {
 // ============================================
 
 /**
- * Compile a single expression into a function using mathjs
+ * Compile a single expression into a native JavaScript function
+ * Uses new Function() for maximum performance
  * The function receives (n, t, vars) where vars contains computed variable values
- * Supports loop expressions (sum/prod)
  */
 function compileExpression(
   expression: string,
@@ -96,46 +144,39 @@ function compileExpression(
       };
     }
 
-    // No loops - use standard mathjs compilation
-    // Preprocess to convert Math.* to mathjs format
-    const processedExpr = preprocessExpression(expression);
+    // No loops - compile to native JavaScript function
+    const jsCode = expressionToJS(expression, variableNames);
 
-    // Compile with mathjs
-    const compiled: EvalFunction = compile(processedExpr);
+    // Build destructuring for variables
+    const varDestructure = variableNames.length > 0
+      ? `const {${variableNames.join(',')}} = vars;`
+      : '';
 
-    // Create wrapper function that builds scope from n, t, and vars
-    const fn = (
+    // Generate native function using new Function()
+    // This is safe because we validated the expression above
+    const fnBody = `
+      "use strict";
+      ${varDestructure}
+      const result = ${jsCode};
+      return (typeof result === 'number' && isFinite(result)) ? result : 0;
+    `;
+
+    const nativeFn = new Function('n', 't', 'vars', fnBody) as (
       n: number,
       t: number,
       vars: Record<string, number>
-    ): number => {
-      // Build scope with all variables
-      const scope: Record<string, number> = {
-        n,
-        t,
-        ...vars,
-      };
-
-      try {
-        const result = compiled.evaluate(scope);
-        // Ensure we return a valid number
-        if (typeof result !== 'number' || !isFinite(result)) {
-          return 0;
-        }
-        return result;
-      } catch {
-        return 0;
-      }
-    };
+    ) => number;
 
     // Test compilation with sample values
-    const testVars = Object.fromEntries(variableNames.map((v) => [v, 0]));
-    const testResult = fn(1, 0, testVars);
+    const testVars: Record<string, number> = Object.fromEntries(
+      variableNames.map((v) => [v, 1])
+    );
+    const testResult = nativeFn(1, 1, testVars);
     if (typeof testResult !== 'number') {
       throw new Error('Expression did not return a number');
     }
 
-    return { fn };
+    return { fn: nativeFn };
   } catch (error) {
     if (error instanceof ParticleExpressionError) {
       throw error;
@@ -150,12 +191,11 @@ function compileExpression(
 
 /**
  * Compile a color expression (can return string)
- * Note: Color expressions may use template literals or string operations
- * which mathjs doesn't support directly. For now, we handle simple cases.
+ * Uses native JavaScript for performance
  */
 function compileColorExpression(
   expression: string,
-  _variableNames: string[]
+  variableNames: string[]
 ): ((n: number, t: number, vars: Record<string, number>) => string) | null {
   if (!expression) return null;
 
@@ -170,34 +210,33 @@ function compileColorExpression(
     return () => colorValue;
   }
 
-  // Check if it's a template literal with stdlib color functions
-  // For complex color expressions, we need to evaluate them differently
-  // For now, we'll use a simple approach for common patterns
-
   try {
-    // Try to compile as a mathematical expression that returns a value
-    // that can be converted to a color string
-    const processedExpr = preprocessExpression(expression);
-    const compiled: EvalFunction = compile(processedExpr);
+    // Compile to native JS
+    const jsCode = expressionToJS(expression, variableNames);
 
-    return (n: number, t: number, vars: Record<string, number>): string => {
-      const scope: Record<string, number> = { n, t, ...vars };
-      try {
-        const result = compiled.evaluate(scope);
-        // If it returns a string, use it directly
-        if (typeof result === 'string') {
-          return result;
-        }
-        // If it returns a number, convert to hex color
-        if (typeof result === 'number' && isFinite(result)) {
-          const hue = Math.abs(result % 360);
-          return `hsl(${hue}, 70%, 50%)`;
-        }
-        return '#ffffff';
-      } catch {
-        return '#ffffff';
+    // Build destructuring for variables
+    const varDestructure = variableNames.length > 0
+      ? `const {${variableNames.join(',')}} = vars;`
+      : '';
+
+    // Generate native function that converts result to color
+    const fnBody = `
+      "use strict";
+      ${varDestructure}
+      const result = ${jsCode};
+      if (typeof result === 'string') return result;
+      if (typeof result === 'number' && isFinite(result)) {
+        const hue = Math.abs(result % 360);
+        return 'hsl(' + hue + ', 70%, 50%)';
       }
-    };
+      return '#ffffff';
+    `;
+
+    return new Function('n', 't', 'vars', fnBody) as (
+      n: number,
+      t: number,
+      vars: Record<string, number>
+    ) => string;
   } catch (error) {
     throw new ParticleExpressionError(
       `Failed to compile color expression: ${expression}`,

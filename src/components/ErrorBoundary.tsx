@@ -5,6 +5,7 @@
 
 import { Component, type ErrorInfo, type ReactNode, type FC } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { ENGINE_THEME } from '../constants/config';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,7 @@ const ErrorFallback: FC<{
   error: Error | null;
   onReset: () => void;
 }> = ({ error, onReset }) => (
-  <div className="w-full h-full flex items-center justify-center bg-[#050505]">
+  <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: ENGINE_THEME.background }}>
     <div className="bg-[#09090b] p-8 rounded-3xl border border-red-500/30 shadow-2xl flex flex-col items-center max-w-md">
       <div className="bg-red-950/50 p-4 rounded-full mb-4">
         <AlertTriangle className="w-8 h-8 text-red-400" />

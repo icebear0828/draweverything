@@ -15,9 +15,6 @@ export * from './safeEval';
 // Image processing (contour extraction)
 export * from './imageProcessing';
 
-// Particle formula compilation
-export * from './particleCompiler';
-
 // Preset shape URIs
 export * from './presetShapes';
 

@@ -80,7 +80,7 @@ export const PRESETS: Record<string, PresetDef> = {
 
       // 透明度: 粒子像火花一样生灭
       alphaFn: '0.4 + 0.6 * Math.sin(t * 5 + n * 13.9)',
-      particleCount: 6000,
+      particleCount: 6000,  // 需要 6000 才能让 theta (n*0.001) 覆盖完整 2π
       colorHex: '#10b981', // Emerald
       timeScale: 0.002
     }

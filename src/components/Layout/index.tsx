@@ -4,6 +4,7 @@
  */
 
 import type { FC, ReactNode } from 'react';
+import { ENGINE_THEME } from '../../constants/config';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,7 +12,10 @@ interface LayoutProps {
 
 const Layout: FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="relative h-screen w-full bg-[#050505] text-zinc-100 font-sans selection:bg-cyan-500/30 overflow-hidden">
+    <div
+      className="relative h-screen w-full text-zinc-100 font-sans selection:bg-cyan-500/30 overflow-hidden"
+      style={{ backgroundColor: ENGINE_THEME.background }}
+    >
       {children}
     </div>
   );

@@ -94,3 +94,15 @@ export const IMAGE_PROCESSING_TIMEOUT_MS = 30000;
 
 /** 表达式最大长度 */
 export const EXPRESSION_MAX_LENGTH = 1000;
+
+// ============================================
+// Theme
+// ============================================
+
+/** 引擎主题配置 */
+export const ENGINE_THEME = {
+    /** 主背景色 (深空黑) */
+    background: '#050505',
+    /** 默认粒子颜色 */
+    particleDefault: '#ffffff',
+} as const;
